@@ -2,6 +2,24 @@ import json
 import os
 import pandas as pd
 
+
+#Helper function from expected_shot
+def expectedTeamShots(team):
+    totalShots = []
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Games/' + team):
+        if not i.startswith('.') and not i.endswith('rebound.json') and not i.endswith('gamelog.json'):
+            with open('/Users/christianholmes/NBA/players/2014/Games/' + team + '/' + i) as data_file:
+                data = json.load(data_file)
+                totalShots.append(data)
+    shots = 0
+
+    for i in totalShots:
+        shots += len(i)
+
+    #Total number of shots that a team takes on average
+    avgTeamShots = float(shots)/float(len(totalShots))
+    return avgTeamShots
+
 def expectedShotsTaken(player,opponent):
     #First find out which team he plays for by going through the rosters
     for i in os.listdir('/Users/christianholmes/NBA/players/2014/Rosters/'):
@@ -156,16 +174,18 @@ def expectedAssists1(player,opponent):
 
     return avgPlayerAssists
 
-def expectedAssists2(player,opponent):
+def expectedAssists2(player,opponent, startDate='0000-01-01', endDate='9000-01-01'):
     with open('/Users/christianholmes/NBA/players/2014/GameLogs/' + str(player) + '.json') as dataFile:
         dataFile = json.load(dataFile)
         assists = []
         for game in dataFile:
-            assists.append(game[22])
+            if game[6] > startDate and game[6] <= endDate:
+                assists.append(game[22])
         avgPlayerAssists = float(sum(assists))/float(len(assists))
 
     totalAssists = 0
     totalSuccessfulShots = 0
+
     for i in os.listdir('/Users/christianholmes/NBA/players/2014/Teams/'):
         if not i.startswith('.') and not i.endswith('_game.json'):
             with open ('/Users/christianholmes/NBA/players/2014/Teams/' + i) as data_file:
@@ -173,19 +193,84 @@ def expectedAssists2(player,opponent):
                 totalAssists += data[0][19]
                 totalSuccessfulShots += data[0][7]
     avgAssists = totalAssists/30
+
     avgSuccessfulShots = totalSuccessfulShots/30
-
     assistsPerShot = avgAssists/avgSuccessfulShots
-
-    shots = expectedShotsTaken(player, opponent)
+    shots = expectedTeamShots(opponent)
+    #avgPlayerAssists =
 
     return assistsPerShot * shots
 
+def expectedFouls(player,opponent):
+    #Find the number of fouls he draws per game
+    with open('/Users/christianholmes/NBA/players/2014/GameLogs/' + str(player) + '.json') as dataFile:
+        dataFile = json.load(dataFile)
+        fouls = []
+        madeShots = []
+        for game in dataFile:
+            fouls.append(game[17])
+            madeShots.append(game[16])
+        avgPlayerFTs = float(sum(fouls))/float(len(fouls))
+        fgPCT = float(sum(madeShots)/float(sum(fouls)))
+
+    totalFTs = 0
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Teams/'):
+        if not i.startswith('.') and not i.endswith('_game.json'):
+            with open ('/Users/christianholmes/NBA/players/2014/Teams/' + i) as data_file:
+                data = json.load(data_file)
+                totalFTs += data[0][14]
+
+    avgFouls = totalFTs/30
+
+    with open('/Users/christianholmes/NBA/players/2014/Teams/' + opponent + '_opponent.json') as data_file:
+        data = json.load(data_file)
+        opponentTeamFTs = data[0][14]
+
+
+    #Percent that defense lowers total shots
+    defenseFoulPercentDifference =  (opponentTeamFTs - avgFouls) / opponentTeamFTs
+
+    #Expected number of shots that a player will take against a given opponent
+    avgPlayerFTs = avgPlayerFTs + (avgPlayerFTs * defenseFoulPercentDifference)
+
+
+    return fgPCT*avgPlayerFTs
+
+def expectedTurnovers(player, opponent):
+    #Find the number of blocks he averages per game
+    with open('/Users/christianholmes/NBA/players/2014/GameLogs/' + str(player) + '.json') as dataFile:
+        dataFile = json.load(dataFile)
+        turnovers = []
+        for game in dataFile:
+            turnovers.append(game[25])
+        avgPlayerTurnovers = float(sum(turnovers))/float(len(turnovers))
+
+    totalTurnovers = 0
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Teams/'):
+        if not i.startswith('.') and not i.endswith('_game.json'):
+            with open ('/Users/christianholmes/NBA/players/2014/Teams/' + i) as data_file:
+                data = json.load(data_file)
+                totalTurnovers += data[0][20]
+
+    avgTurnovers = totalTurnovers/30
+
+    with open('/Users/christianholmes/NBA/players/2014/Teams/' + opponent + '_opponent.json') as data_file:
+        data = json.load(data_file)
+        opponentTeamTurnovers = data[0][20]
+
+    #Percent that defense lowers total shots
+    defenseTurnoverPercentDifference =  (opponentTeamTurnovers - avgTurnovers) / opponentTeamTurnovers
+
+    #Expected number of shots that a player will take against a given opponent
+    avgPlayerTurnovers = avgPlayerTurnovers + (avgPlayerTurnovers * defenseTurnoverPercentDifference)
+
+    return avgPlayerTurnovers
 
 
 
 
-#"SEASON_ID","PLAYER_ID","PLAYER_NAME","TEAM_ABBREVIATION","TEAM_NAME","GAME_ID","GAME_DATE","MATCHUP","WL","MIN","FGM","FGA","FG_PCT","FG3M","FG3A","FG3_PCT","FTM","FTA","FT_PCT","OREB","DREB","REB","AST","STL","BLK","TOV","PF","PTS","PLUS_MINUS","VIDEO_AVAILABLE"
+
+#"SEASON_ID","PLAYER_ID","PLAYER_NAME","TEAM_ABBREVIATION","TEAM_NAME","GAME_ID","GAME_DATE","MATCHUP","WL","MIN","FGM","FGA","FG_PCT","FG3M","FG3A","FG3_PCT","FTM" [16],"FTA" [17],"FT_PCT","OREB","DREB","REB","AST","STL","BLK","TOV","PF","PTS","PLUS_MINUS","VIDEO_AVAILABLE"
 
 
 #Assists
@@ -227,4 +312,5 @@ def expectedAssists2(player,opponent):
 print expectedBlocks(1891,'NYK')
 print expectedSteals(1891, 'NYK')
 print expectedAssists1(1891, 'NYK')
-print expectedAssists2(1891, 'NYK')
+print expectedAssists2(1891, 'NYK','2014-09-01', '2014-11-30')
+print expectedFouls(1891, 'NYK')

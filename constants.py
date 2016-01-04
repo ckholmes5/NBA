@@ -1,0 +1,7 @@
+baseDir = '/Users/christianholmes/NBA'
+reboundDir = baseDir + '/players/2014/Rebounds/'
+shotDir = baseDir + '/players/2014/Shots/'
+gameDir = baseDir + '/players/2014/Games/'
+gamelogDir = baseDir + '/players/2014/GameLogs/'
+teamDir = baseDir + '/players/2014/Teams/'
+rosterDir = baseDir + '/players/2014/Rosters/'
