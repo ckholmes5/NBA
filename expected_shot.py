@@ -116,13 +116,15 @@ def expectedShotsTaken(player,opponent):
                         id = roster[0]
                         break
     #How many total shots the team he plays for takes on average
+    totalShots = expectedTeamShots(team)
+    '''
     totalShots = []
     for i in os.listdir('/Users/christianholmes/NBA/players/2014/Games/' + team):
         if not i.startswith('.') and not i.endswith('rebound.json') and not i.endswith('gamelog.json'):
             with open('/Users/christianholmes/NBA/players/2014/Games/' + team + '/' + i) as data_file:
                 data = json.load(data_file)
                 totalShots.append(data)
-
+    '''
     shots = 0
 
     for i in totalShots:
@@ -166,8 +168,15 @@ def expectedShotsTaken(player,opponent):
     return playerShots
 
 
-
-
+#How many total shots the team he plays for takes on average
+def expectedTeamShots(team):
+    totalShots = []
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Games/' + team):
+        if not i.startswith('.') and not i.endswith('rebound.json') and not i.endswith('gamelog.json'):
+            with open('/Users/christianholmes/NBA/players/2014/Games/' + team + '/' + i) as data_file:
+                data = json.load(data_file)
+                totalShots.append(data)
+    return totalShots
 
 
 
@@ -238,3 +247,5 @@ leagueShotDistance = 4.13361607305
 #To Do:
 #Find the league averages for the closest defender, for the shot distribution, and for the shot clock.
 #
+
+print expectedShotsTaken(1891, 'BOS')
