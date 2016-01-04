@@ -1,49 +1,27 @@
 import json
 import os
 import pandas as pd
-import matplotlib.pyplot as plt
 import statsmodels.formula.api as smf
 
 
-
-
-
-#The point of this file is to find the expected number of points a certain player will score in a given game. If you have the expected points that each player will score, you can predict winners, losers, and scores of each game.
+#The point of this file is to find the expected number of points a certain player will score in a given game.
 
 #The first step to accomplish this we're going to use Benjamin Morris's formula of glm(made ~ SHOT_CLOCK + SHOT_DIST + CLOSE_DEF_DIST,family=binomial,data=filter(shots,!is.na(SHOT_CLOCK)))
 #In english, he is predicting if a shot will be made depending on three variables: amount of time left on shot clock, the distance the shot is taken from, and the distance of the closest defender.
 #To fill in this formula, we'll need to predict all three of those variables.
 
-
-
-
-#1. Regress all the data we have using Morris's equation. Determine the likelihood of making a shot having those parameters
-#2. Determine the expected of number of shots a player will take in a game. TODO: how to determine the expected number of shots?
-#3.
-
-
-
-
 #Regression for the likelihood of making a shot:
 
-shot_data = pd.read_json('/Users/christianholmes/NBA/players/2014/Shots/708.json', )
-shot_data.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
 
+def expectedBetas(playerID, opposingTeam):
+    shot_data = pd.read_json('/Users/christianholmes/NBA/players/2014/Shots/' + str(playerID) + '.json', )
+    shot_data.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
 
-def expectedBetas(opposingTeam):
     roster = open('/Users/christianholmes/NBA/players/2014/Rosters/' + opposingTeam + '.json', )
     roster = json.load(roster)
 
     defense = pd.read_json('/Users/christianholmes/NBA/players/2014/Defense/' + str(roster[0][0]) + '.json' , 'r')
     defense.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
-
-    for player in roster[1:]:
-        #TODO: DELETE THE IF STATEMENT AFTER YOU"RE DONE TESTING IT
-        if player[0] < 1000000:
-
-            defense1 = pd.read_json('/Users/christianholmes/NBA/players/2014/Defense/' + str(player[0]) + '.json' , 'r')
-            defense1.columns = ["GAME_ID", "MATCHUP", "LOCATION", "W", "FINAL_MARGIN", "SHOT_NUMBER", "PERIOD", "GAME_CLOCK", "SHOT_CLOCK", "DRIBBLES", "TOUCH_TIME", "SHOT_DIST", "PTS_TYPE", "SHOT_RESULT", "CLOSEST_DEFENDER", "CLOSEST_DEFENDER_PLAYER_ID", "CLOSE_DEF_DIST", "FGM", "PTS"]
-            defense.append(defense1)
 
     means = shot_data.mean()
 
@@ -65,7 +43,7 @@ def expectedBetas(opposingTeam):
 #Returns average shot percentage for given player -DONE
 def expectedShotPercentage(player,team):
 
-    shot_data = pd.read_json('/Users/christianholmes/NBA/players/2014/Shots/' + player + '.json', )
+    shot_data = pd.read_json('/Users/christianholmes/NBA/players/2014/Shots/' + str(player) + '.json', )
 
     shot_data.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
 
@@ -84,7 +62,7 @@ def expectedShotPercentage(player,team):
     avgShotDistance = means[7]
     avgShotClock = means[4]
 
-    teamDiff = expectedBetas(team)
+    teamDiff = expectedBetas(player,team)
 
     leagueShotClock = 12.4624577172
     leagueDefenderDistance = 4.13361607305
@@ -96,14 +74,29 @@ def expectedShotPercentage(player,team):
     #Shooting Percent against specific team
     spefTeam = intercept + shotClock*teamDiff[0] + shotDistance*teamDiff[1] + defenderDistance*teamDiff[2]
 
-    #return [teamDiffShotClock, teamDiffShotDistance, teamDiffDefenderDistance]
-
     actualTeam = intercept + shotClock*avgShotClock + shotDistance*avgShotDistance + defenderDistance*avgDefenderDistance
 
     return spefTeam
 
+#How many total shots the team he plays for takes on average
+def expectedTeamShots(team):
+    totalShots = []
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Games/' + team):
+        if not i.startswith('.') and not i.endswith('rebound.json') and not i.endswith('gamelog.json'):
+            with open('/Users/christianholmes/NBA/players/2014/Games/' + team + '/' + i) as data_file:
+                data = json.load(data_file)
+                totalShots.append(data)
+    shots = 0
 
-def expectedShotsTaken(player,opponent):
+    for i in totalShots:
+        shots += len(i)
+
+    #Total number of shots that a team takes on average
+    avgTeamShots = float(shots)/float(len(totalShots))
+    return avgTeamShots
+
+
+def teamFinder(player):
     #First find out which team he plays for by going through the rosters
     for i in os.listdir('/Users/christianholmes/NBA/players/2014/Rosters/'):
         if not i.startswith('.'):
@@ -115,23 +108,24 @@ def expectedShotsTaken(player,opponent):
                         team = roster[9]
                         id = roster[0]
                         break
+
+
+def expectedShotsTaken(player,opponent):
+
+    #First find out which team he plays for by going through the rosters
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Rosters/'):
+        if not i.startswith('.'):
+            with open('/Users/christianholmes/NBA/players/2014/Rosters/' + i) as data_file:
+                data = json.load(data_file)
+
+                for roster in data:
+                    if roster[0] == player:
+                        team = roster[9]
+                        id = roster[0]
+                        break
+
     #How many total shots the team he plays for takes on average
     totalShots = expectedTeamShots(team)
-    '''
-    totalShots = []
-    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Games/' + team):
-        if not i.startswith('.') and not i.endswith('rebound.json') and not i.endswith('gamelog.json'):
-            with open('/Users/christianholmes/NBA/players/2014/Games/' + team + '/' + i) as data_file:
-                data = json.load(data_file)
-                totalShots.append(data)
-    '''
-    shots = 0
-
-    for i in totalShots:
-        shots += len(i)
-
-    #Total number of shots that a team takes on average
-    avgTeamShots = float(shots)/float(len(totalShots))
 
     shots = pd.read_json('/Users/christianholmes/NBA/players/2014/Shots/' + str(player) + '.json')
     shots.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
@@ -142,7 +136,7 @@ def expectedShotsTaken(player,opponent):
     avgPlayerShots = float(oldRows/rows)
 
     #Percentage of total shots that a player takes
-    pctPlayerShots = avgPlayerShots/avgTeamShots
+    pctPlayerShots = avgPlayerShots/totalShots
 
     #Defense's effect on shots
     totalOpponentShots = 0
@@ -163,28 +157,9 @@ def expectedShotsTaken(player,opponent):
 
 
     #Expected number of shots that a player will take against a given opponent
-    playerShots = (avgTeamShots + (avgTeamShots * defenseShotPercentDifference)) * pctPlayerShots
+    playerShots = (totalShots + (totalShots * defenseShotPercentDifference)) * pctPlayerShots
 
     return playerShots
-
-
-#How many total shots the team he plays for takes on average
-def expectedTeamShots(team):
-    totalShots = []
-    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Games/' + team):
-        if not i.startswith('.') and not i.endswith('rebound.json') and not i.endswith('gamelog.json'):
-            with open('/Users/christianholmes/NBA/players/2014/Games/' + team + '/' + i) as data_file:
-                data = json.load(data_file)
-                totalShots.append(data)
-    return totalShots
-
-
-
-
-
-print expectedShotsTaken(708, 'CHI')
-
-
 
 
 
@@ -214,22 +189,96 @@ def leagueAverage(year):
     print defenderDistance
 
 
+def expectedFouls(player,opponent):
+    #Find the number of fouls he draws per game
+    with open('/Users/christianholmes/NBA/players/2014/GameLogs/' + str(player) + '.json') as dataFile:
+        dataFile = json.load(dataFile)
+        fouls = []
+        for game in dataFile:
+            fouls.append(game[17])
+        avgPlayerFTs = float(sum(fouls))/float(len(fouls))
+
+    totalFTs = 0
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Teams/'):
+        if not i.startswith('.') and not i.endswith('_game.json'):
+            with open ('/Users/christianholmes/NBA/players/2014/Teams/' + i) as data_file:
+                data = json.load(data_file)
+                totalFTs += data[0][16]
+
+    avgFouls = totalFTs/30
+
+    with open('/Users/christianholmes/NBA/players/2014/Teams/' + opponent + '_opponent.json') as data_file:
+        data = json.load(data_file)
+        opponentTeamFTs = data[0][16]
+
+    #Percent that defense lowers total shots
+    defenseFoulPercentDifference =  (opponentTeamFTs - avgFouls) / opponentTeamFTs
+
+    #Expected number of shots that a player will take against a given opponent
+    avgPlayerFTs = avgPlayerFTs + (avgPlayerFTs * defenseFoulPercentDifference)
+
+    return avgPlayerFTs
+
+def expectedFouls(player,opponent):
+    #Find the number of fouls he draws per game
+    with open('/Users/christianholmes/NBA/players/2014/GameLogs/' + str(player) + '.json') as dataFile:
+        dataFile = json.load(dataFile)
+        fouls = []
+        madeShots = []
+        for game in dataFile:
+            fouls.append(game[17])
+            madeShots.append(game[16])
+        avgPlayerFTs = float(sum(fouls))/float(len(fouls))
+        fgPCT = float(sum(madeShots)/float(sum(fouls)))
+
+    totalFTs = 0
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Teams/'):
+        if not i.startswith('.') and not i.endswith('_game.json'):
+            with open ('/Users/christianholmes/NBA/players/2014/Teams/' + i) as data_file:
+                data = json.load(data_file)
+                totalFTs += data[0][14]
+
+    avgFouls = totalFTs/30
+
+    with open('/Users/christianholmes/NBA/players/2014/Teams/' + opponent + '_opponent.json') as data_file:
+        data = json.load(data_file)
+        opponentTeamFTs = data[0][14]
+
+
+    #Percent that defense lowers total shots
+    defenseFoulPercentDifference =  (opponentTeamFTs - avgFouls) / opponentTeamFTs
+
+    #Expected number of shots that a player will take against a given opponent
+    avgPlayerFTs = avgPlayerFTs + (avgPlayerFTs * defenseFoulPercentDifference)
+
+
+    return fgPCT*avgPlayerFTs
+
+
 def expectedPoints(player,opposingTeam):
+    shotPCT = expectedShotPercentage(player, opposingTeam)
+    expectedShots = expectedShotsTaken(player, opposingTeam)
+    fouls = expectedFouls(player,opposingTeam)
+    #TODO: This should be a seperate function
 
-    shot_data = pd.read_json('/Users/christianholmes/NBA/players/2014/Shots/' + player + '.json', )
-    shot_data.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
+    with open('/Users/christianholmes/NBA/players/2014/Shots/' + str(player) + '.json') as data_file:
+        shots = json.load(data_file)
+        twos = 0
+        for shot in shots:
+            if shot[12] == 2:
+                twos += 1
+        twoPercent = float(twos)/float(len(shots))
+        threePercent = 1.0 - twoPercent
 
 
+    points = (shotPCT*expectedShots*twoPercent*2) + (shotPCT*expectedShots*threePercent*3) + fouls
+    threePointers = shotPCT*expectedShots*threePercent
+
+    return [points, threePointers]
+
+#shot_data.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
 
 
-
-
-'''
-Intercept         0.361120
-CLOSE_DEF_DIST    0.049962
-SHOT_DIST        -0.011816
-SHOT_CLOCK        0.004599
-'''
 
 leagueShotClock = 12.4624577172
 leagueDefenderDistance = 13.6198586128
@@ -241,11 +290,185 @@ leagueShotDistance = 4.13361607305
 #Then you can figure out the percent difference in total shots and the number of shots you expect this player's team to take. Then find the expected number of shots he'll take. Finally, multiply that number by the points per shot equation above. Then you know the number of shots he'll take per game!
 
 
-#Sean's idea:
+########################REST OF DK POINTS####################################
+def expectedBlocks(player,opponent):
+    #Find the number of blocks he averages per game
+    with open('/Users/christianholmes/NBA/players/2014/GameLogs/' + str(player) + '.json') as dataFile:
+        dataFile = json.load(dataFile)
+        blocks = []
+        for game in dataFile:
+            blocks.append(game[24])
+        avgPlayerBlocks = float(sum(blocks))/float(len(blocks))
+
+    totalBlocks = 0
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Teams/'):
+        if not i.startswith('.') and not i.endswith('_game.json'):
+            with open ('/Users/christianholmes/NBA/players/2014/Teams/' + i) as data_file:
+                data = json.load(data_file)
+                totalBlocks += data[0][22]
+
+    avgBlocks = totalBlocks/30
+
+    with open('/Users/christianholmes/NBA/players/2014/Teams/' + opponent + '_opponent.json') as data_file:
+        data = json.load(data_file)
+        opponentTeamBlocks = data[0][22]
+
+    #Percent that defense lowers total shots
+    defenseBlockPercentDifference =  (opponentTeamBlocks - avgBlocks) / opponentTeamBlocks
+
+    #Expected number of shots that a player will take against a given opponent
+    avgPlayerBlocks = avgPlayerBlocks + (avgPlayerBlocks * defenseBlockPercentDifference)
+
+    return avgPlayerBlocks
 
 
-#To Do:
-#Find the league averages for the closest defender, for the shot distribution, and for the shot clock.
-#
+def expectedSteals(player,opponent):
+    #Find the number of blocks he averages per game
+    with open('/Users/christianholmes/NBA/players/2014/GameLogs/' + str(player) + '.json') as dataFile:
+        dataFile = json.load(dataFile)
+        steals = []
+        for game in dataFile:
+            steals.append(game[23])
+        avgPlayerSteals = float(sum(steals))/float(len(steals))
 
-print expectedShotsTaken(1891, 'BOS')
+    totalSteals = 0
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Teams/'):
+        if not i.startswith('.') and not i.endswith('_game.json'):
+            with open ('/Users/christianholmes/NBA/players/2014/Teams/' + i) as data_file:
+                data = json.load(data_file)
+                totalSteals += data[0][21]
+
+    avgSteals = totalSteals/30
+
+    with open('/Users/christianholmes/NBA/players/2014/Teams/' + opponent + '_opponent.json') as data_file:
+        data = json.load(data_file)
+        opponentTeamSteals = data[0][21]
+
+    #Percent that defense lowers total shots
+    defenseStealPercentDifference =  (opponentTeamSteals - avgSteals) / opponentTeamSteals
+
+    #Expected number of shots that a player will take against a given opponent
+    avgPlayerSteals = avgPlayerSteals + (avgPlayerSteals * defenseStealPercentDifference)
+
+    return avgPlayerSteals
+
+def expectedAssists1(player,opponent):
+    #Find the number of blocks he averages per game
+    with open('/Users/christianholmes/NBA/players/2014/GameLogs/' + str(player) + '.json') as dataFile:
+        dataFile = json.load(dataFile)
+        assists = []
+        for game in dataFile:
+            assists.append(game[22])
+        avgPlayerAssists = float(sum(assists))/float(len(assists))
+
+    totalAssists = 0
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Teams/'):
+        if not i.startswith('.') and not i.endswith('_game.json'):
+            with open ('/Users/christianholmes/NBA/players/2014/Teams/' + i) as data_file:
+                data = json.load(data_file)
+                totalAssists += data[0][19]
+
+    avgAssists = totalAssists/30
+
+    with open('/Users/christianholmes/NBA/players/2014/Teams/' + opponent + '_opponent.json') as data_file:
+        data = json.load(data_file)
+        opponentTeamAssists = data[0][19]
+
+    #Percent that defense lowers total shots
+    defenseAssistPercentDifference =  (opponentTeamAssists - avgAssists) / opponentTeamAssists
+
+    #Expected number of shots that a player will take against a given opponent
+    avgPlayerAssists = avgPlayerAssists + (avgPlayerAssists * defenseAssistPercentDifference)
+
+    return avgPlayerAssists
+
+def expectedTurnovers(player, opponent):
+    #Find the number of blocks he averages per game
+    with open('/Users/christianholmes/NBA/players/2014/GameLogs/' + str(player) + '.json') as dataFile:
+        dataFile = json.load(dataFile)
+        turnovers = []
+        for game in dataFile:
+            turnovers.append(game[25])
+        avgPlayerTurnovers = float(sum(turnovers))/float(len(turnovers))
+
+    totalTurnovers = 0
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Teams/'):
+        if not i.startswith('.') and not i.endswith('_game.json'):
+            with open ('/Users/christianholmes/NBA/players/2014/Teams/' + i) as data_file:
+                data = json.load(data_file)
+                totalTurnovers += data[0][20]
+
+    avgTurnovers = totalTurnovers/30
+
+    with open('/Users/christianholmes/NBA/players/2014/Teams/' + opponent + '_opponent.json') as data_file:
+        data = json.load(data_file)
+        opponentTeamTurnovers = data[0][20]
+
+    #Percent that defense lowers total shots
+    defenseTurnoverPercentDifference =  (opponentTeamTurnovers - avgTurnovers) / opponentTeamTurnovers
+
+    #Expected number of shots that a player will take against a given opponent
+    avgPlayerTurnovers = avgPlayerTurnovers + (avgPlayerTurnovers * defenseTurnoverPercentDifference)
+
+    return avgPlayerTurnovers
+
+
+def expectedRebounds(player, opponent):
+    #Find the number of blocks he averages per game
+    with open('/Users/christianholmes/NBA/players/2014/GameLogs/' + str(player) + '.json') as dataFile:
+        dataFile = json.load(dataFile)
+        rebounds = []
+        for game in dataFile:
+            rebounds.append(game[21])
+        avgPlayerRebounds = float(sum(rebounds))/float(len(rebounds))
+
+    totalRebounds = 0
+    for i in os.listdir('/Users/christianholmes/NBA/players/2014/Teams/'):
+        if not i.startswith('.') and not i.endswith('_game.json'):
+            with open ('/Users/christianholmes/NBA/players/2014/Teams/' + i) as data_file:
+                data = json.load(data_file)
+                totalRebounds += data[0][18]
+
+    avgRebounds = totalRebounds/30
+
+    with open('/Users/christianholmes/NBA/players/2014/Teams/' + opponent + '_opponent.json') as data_file:
+        data = json.load(data_file)
+        opponentTeamRebounds = data[0][18]
+
+    #Percent that defense lowers total shots
+    defenseReboundPercentDifference =  (opponentTeamRebounds - avgRebounds) / opponentTeamRebounds
+
+    #Expected number of shots that a player will take against a given opponent
+    avgPlayerRebounds = avgPlayerRebounds + (avgPlayerRebounds * defenseReboundPercentDifference)
+
+    return avgPlayerRebounds
+
+def DKPoints(player, opponent):
+    pointStuff = expectedPoints(player, opponent)
+    points = pointStuff[0]
+    threePointers = pointStuff[1]
+    assists = expectedAssists1(player, opponent)
+    rebounds = expectedRebounds(player, opponent)
+    blocks = expectedBlocks(player, opponent)
+    steals = expectedSteals(player, opponent)
+    turnover = expectedTurnovers(player, opponent)
+
+    totalPoints = points + (0.5 * threePointers) + (1.5 * assists) + (1.25 * rebounds) + (2 * blocks) + (2 * steals) - (0.5 * turnover)
+
+    totalPointsList = [points, assists, rebounds, blocks, steals]
+
+    temp = 0
+    for i in totalPointsList:
+        if i >= 10:
+            temp += 1
+
+    if temp >= 3:
+        totalPoints += 3
+
+    if temp >= 2:
+        totalPoints += 1.5
+
+    return totalPoints
+
+print DKPoints(708, 'PHI')
+
