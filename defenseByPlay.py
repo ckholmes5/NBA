@@ -1,36 +1,31 @@
 import os
 import json
+import datetime
+import constants as cs
 
-for i in os.listdir('/Users/christianholmes/NBA/players/2014/Shots/'):
+months = cs.months
+
+
+def get_date_shots(date):
+    month = str(date[0:3])
+    day = str(date[4:6])
+    year = int(date[8:12])
+    return datetime.date(year, months[month], months[day])
+
+for i in os.listdir(cs.shotDir):
     if not i.startswith('.'):
-        with open('/Users/christianholmes/NBA/players/2014/Shots/' + i , 'r') as data_file:
+        with open(cs.shotDir + i , 'r') as data_file:
             data = json.load(data_file)
             for shot in data:
-
-                with open('/Users/christianholmes/NBA/players/2014/Defense/' + str(shot[15]) + '.json', 'a') as outfile:
+                with open(cs.defenseDir + str(shot[15]) + '.json', 'a') as outfile:
                     json.dump(shot, outfile)
 
-
-
-                '''
+'''
+#Uncomment this code if you wish to sort defense by the team a given player was playing defense against
                 if shot[1][19] == 'v':
-                    if not os.path.exists('/Users/christianholmes/NBA/players/2014/Defense/' + shot[1][23:26]):
-                        os.makedirs('/Users/christianholmes/NBA/players/2014/Defense/' + shot[1][23:26])
+                    if not os.path.exists(cs.defenseDir + shot[1][23:26]):
+                        os.makedirs(cs.defenseDir + shot[1][23:26])
                 elif shot[1][19] == '@':
-                    if not os.path.exists('/Users/christianholmes/NBA/players/2014/Defense/' + shot[1][21:24]):
-                        os.makedirs('/Users/christianholmes/NBA/players/2014/Defense/' + shot[1][21:24])
-                '''
-
-            '''
-                if not os.path.exists('/Users/christianholmes/NBA/players/2014/Defense/' + shot[1][15:18]):
-                    os.makedirs('/Users/christianholmes/NBA/players/2014/Defense/' + shot[1][15:18])
-                with open('/Users/christianholmes/NBA/players/2014/Games/' + shot[1][15:18] + '/' + str(get_date_shots(shot[1][0:12])) + '_rebound.json', 'a') as outfile:
-                    json.dump(shot, outfile)
-
-            '''
-            '''
-            if not os.path.exists('/Users/christianholmes/NBA/players/2014/Defense/' + str(shot[15])):
-                    os.makedirs('/Users/christianholmes/NBA/players/2014/Defense/' + str(shot[15]))
-            '''
-
-#[u'0021401215', u'APR 14, 2015 - WAS @ IND', u'A', u'L', -4, 1, 1, u'11:11', 16.0, 0, 1.0, 22.5, 3, u'missed', u'Hill, George', 201588, 9.6, 0, 0]
+                    if not os.path.exists(cs.defenseDir + shot[1][21:24]):
+                        os.makedirs(cs.defenseDir + shot[1][21:24])
+'''

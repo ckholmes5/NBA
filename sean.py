@@ -109,14 +109,14 @@ class teamOpponentPull:
 #    def __init__(self, )
 
 
-#class saveFile:
-#    file=None
-#    def __init__(self, file):
-#         self.file=file
+class saveFile:
+    file=None
+    def __init__(self, file):
+         self.file=file
 	
-#	def save(jsonData):
-#	     with open(file, 'w') as outfile:
-#	          json.dumps(jsonData, outfile)
+    def save(jsonData):
+         with open(file, 'w') as outfile:
+              json.dumps(jsonData, outfile)
 	
 
 
@@ -221,12 +221,12 @@ def doSaveRosters():
 			json.dump(shot, outfile)
 
 def setupBox():
-    os.makseDirs(constants.gamelogDir)
-    os.makseDirs(constants.teamDir)
-    os.makseDirs(constants.gameDir)
-    os.makseDirs(constants.shotDir)            
-    os.makseDirs(constants.reboundDir)
-    os.makseDirs(constants.rosterDir)                
+    os.makedirs(constants.gamelogDir)
+    #os.makedirs(constants.teamDir)
+    os.makedirs(constants.gameDir)
+    os.makedirs(constants.shotDir)
+    os.makedirs(constants.reboundDir)
+    os.makedirs(constants.rosterDir)
     doSaveRebounds()
     doSaveShots()
     transformReboundsToPerGamePerPlay()
@@ -235,3 +235,5 @@ def setupBox():
     doSaveGames()
     doSaveGamelogByPlayer()
     doSaveRosters()
+
+doSaveRosters()

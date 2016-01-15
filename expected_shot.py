@@ -2,7 +2,9 @@ import json
 import os
 import pandas as pd
 import statsmodels.formula.api as smf
-
+import time
+import requests
+import constants as cs
 
 #The point of this file is to find the expected number of points a certain player will score in a given game.
 
@@ -14,10 +16,10 @@ import statsmodels.formula.api as smf
 
 
 def expectedBetas(playerID, opposingTeam):
-    shot_data = pd.read_json('/Users/christianholmes/NBA/players/2014/Shots/' + str(playerID) + '.json', )
+    shot_data = pd.read_json(cs.shotDir + str(playerID) + '.json', )
     shot_data.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
 
-    roster = open('/Users/christianholmes/NBA/players/2014/Rosters/' + opposingTeam + '.json', )
+    roster = open(cs.rosterDir + opposingTeam + '.json', )
     roster = json.load(roster)
 
     defense = pd.read_json('/Users/christianholmes/NBA/players/2014/Defense/' + str(roster[0][0]) + '.json' , 'r')
@@ -198,6 +200,7 @@ def expectedFouls(player,opponent):
             fouls.append(game[17])
         avgPlayerFTs = float(sum(fouls))/float(len(fouls))
 
+
     totalFTs = 0
     for i in os.listdir('/Users/christianholmes/NBA/players/2014/Teams/'):
         if not i.startswith('.') and not i.endswith('_game.json'):
@@ -210,6 +213,7 @@ def expectedFouls(player,opponent):
     with open('/Users/christianholmes/NBA/players/2014/Teams/' + opponent + '_opponent.json') as data_file:
         data = json.load(data_file)
         opponentTeamFTs = data[0][16]
+
 
     #Percent that defense lowers total shots
     defenseFoulPercentDifference =  (opponentTeamFTs - avgFouls) / opponentTeamFTs
@@ -229,7 +233,10 @@ def expectedFouls(player,opponent):
             fouls.append(game[17])
             madeShots.append(game[16])
         avgPlayerFTs = float(sum(fouls))/float(len(fouls))
-        fgPCT = float(sum(madeShots)/float(sum(fouls)))
+        if float(sum(madeShots)) > 0:
+            fgPCT = float(sum(madeShots)/float(sum(fouls)))
+        else:
+            fgPCT = 0.75
 
     totalFTs = 0
     for i in os.listdir('/Users/christianholmes/NBA/players/2014/Teams/'):
@@ -470,5 +477,148 @@ def DKPoints(player, opponent):
 
     return totalPoints
 
-print DKPoints(708, 'PHI')
 
+
+class ApiPull:
+    url=''
+    macros={}
+
+    def __init__(self, url, macros):
+        self.url = url
+        self.macros = macros
+
+    def get(self):
+         response = requests.get(self.getActualUrl())
+         response.raise_for_status()
+         return response.json()['resultSets'][0]['rowSet']
+
+    def getActualUrl(self):
+        tmp=self.url
+        for k,v in self.macros.iteritems():
+              tmp = tmp.replace('${' + k + '}', v)
+        return tmp
+
+class playersPull:
+    players_url = 'http://stats.nba.com/stats/commonallplayers?IsOnlyCurrentSeason=0&LeagueID=00&Season=${season}'
+    apiPull = None
+
+    def __init__(self, player_macros=None):
+         if player_macros is None:
+              player_macros = {'season': '2015-16'}
+         self.apiPull = ApiPull(self.players_url, player_macros)
+
+    def get(self):
+         return self.apiPull.get()
+
+
+#TODO: Open the directory of players
+
+def statArraySetup(urlNumber):
+    shots_response = requests.get('https://www.draftkings.com/lineup/getavailableplayers?draftGroupId=' + str(urlNumber))
+    shots_response.raise_for_status() # raise exception if invalid response
+    shots = shots_response.json()['playerList']
+
+    allPlayers = playersPull().get()
+    roster = {}
+    todaysPlayers = {}
+    print allPlayers
+    print shots
+    playerArray = "Date;GID;Pos;Name;Starter;DK Pts;DK Salary;Team;H/A;Oppt;Team Score;Oppt Score;Minutes;Stat line\n"
+
+    for player in shots:
+        statArray = ""
+
+        name = player['fnu'] + ' ' + player['lnu']
+        name = name.replace(' ', '_').lower()
+
+        if name == 'j.j._barea':
+            name = 'jose_barea' #TODO: WTF jj barea
+        if name == 'lou_williams':
+            name = 'louis_williams' #TODO: OMG
+        if name == "d'angelo_russell":
+            name = 'dangelo_russell'
+        if name == 'larry_nance_jr.':
+            name = 'larry_nance'
+        if name == 'o.j._mayo':
+            name = 'oj_mayo'
+        if name == "kyle_o'quinn":
+            name = 'kyle_oquinn'
+        if name == "e'twaun_moore":
+            name = 'etwaun_moore'
+        if name == 'louis_amundson':
+            name = 'lou_amundson'
+        if name == "tim_hardaway_jr.":
+            name = 'timothy_hardaway'
+        if name == "johnny_o'bryant":
+            name = 'johnny_obryant'
+        print name
+        for i in allPlayers:
+            if i[5] == name:
+                id = i[0]
+
+                if player['i'] == "O":
+                    todaysPlayers[name] = 0
+                    break
+                try:
+                    dkPoints = DKPoints(id, 'NYK')
+                    todaysPlayers[name] = dkPoints
+                except ValueError: #TODO: Only for 2014, this can be removed once we have 2015...right?
+                    todaysPlayers[name] = None
+
+        statArray = statArray + time.strftime("%Y%m%d") + ';'
+        statArray = statArray + 'None' + ';' #'gameID'
+        statArray = statArray + str(player['pn']) + ';'
+        statArray = statArray + str(name) + ';'
+        statArray = statArray + 'None' + ';' #'Starter?
+        statArray = statArray + str(todaysPlayers[name]) + ';' #TODO: Where the predictions will go!
+        statArray = statArray + str(player['s']) + ';'
+        statArray = statArray + 'None' + ';' #'Team'
+        statArray = statArray + 'None' + ';' #'Home?'
+        statArray = statArray + 'None' + ';' #'Opponent'
+        statArray = statArray + 'None' + ';' #'teamScore'
+        statArray = statArray + 'None' + ';' #'opponentScore'
+        statArray = statArray + 'None' + ';' #'minutes'
+        statArray = statArray + 'None' + ';' #'statLine'
+        playerArray = playerArray + statArray + "\n"
+        print playerArray
+    return playerArray
+
+
+
+##########################START HERE TOMORROW######################################
+
+
+'''
+#['01/07/2016', None, u'SG', u'rashad_vaughn', None, None, 3000, None, None, None, None, None, None, None]
+#20160106;3786;PG;Paul, Chris;1;56.5;$9,200;lac;A;por;109;98;35.58;21pt 4rb 19as 1st 3to 9-19fg 3-4ft - type string
+#['01/07/2016', None, u'SG', u'rashad_vaughn', None, None, 3000, None, None, None, None, None, None, None]
+def statArraySetUp():
+    statArray = []
+
+
+
+
+def makeArray(players):
+
+    #dkPoints = DKPoints(player, 'NYK')
+    #TodaysPlayers[name] = dkPoints
+
+class playerDayfromDraftKings:
+    def __init__(self,statArray):
+
+
+    def getValue(self):
+        if self.dkpoints == 0:
+            return -10000
+        return self.dkpoints * self.dkpoints * self.dkpoints / self.salary
+
+    def __lt__(self, other):
+        return self.getValue() > other.getValue()
+
+    def out(self):
+        print self.name + ' ' + self.salary + ' '
+
+
+    name = statArray[3].replace(' ', '_').lower()
+'''
+print statArraySetup(8266)

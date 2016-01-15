@@ -1,14 +1,57 @@
-##DO NOT RUN WITHOUT COMMENTING OUT API CODE
-
 import requests
 import json
 import os
 import datetime
+import constants as cs
+
+
+####### DEFENSE SETUP #######
+
+months = cs.months
+
+
+def get_date_shots(date):
+    month = str(date[0:3])
+    day = str(date[4:6])
+    year = int(date[8:12])
+    return datetime.date(year, months[month], months[day])
+
+for i in os.listdir(cs.shotDir):
+    if not i.startswith('.'):
+        with open(cs.shotDir + i , 'r') as data_file:
+            data = json.load(data_file)
+            for shot in data:
+                with open(cs.defenseDir + str(shot[15]) + '.json', 'a') as outfile:
+                    json.dump(shot, outfile)
+
+'''
+#Uncomment this code if you wish to sort defense by the team a given player was playing defense against
+                if shot[1][19] == 'v':
+                    if not os.path.exists(cs.defenseDir + shot[1][23:26]):
+                        os.makedirs(cs.defenseDir + shot[1][23:26])
+                elif shot[1][19] == '@':
+                    if not os.path.exists(cs.defenseDir + shot[1][21:24]):
+                        os.makedirs(cs.defenseDir + shot[1][21:24])
+'''
+
+####### END DEFENSE SETUP #######
+
+
+
+
+
+
+
+
+
+
+
 
 
 players_url = 'http://stats.nba.com/stats/commonallplayers?IsOnlyCurrentSeason=1&LeagueID=00&Season=2015-16'
 
-shots_url = 'http://stats.nba.com/stats/playerdashptreboundlogs?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&Period=0&PlayerID=202322&Season=2014-15&SeasonSegment=&SeasonType=Regular+Season&TeamID=0&VsConference=&VsDivision='
+shots_url = 'http://stats.nba.com/stats/playerdashptshotlog?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&Period=0&PlayerID=202322&Season=2015-16&SeasonSegment=&SeasonType=Regular+Season&TeamID=0&VsConference=&VsDivision='
+rebound_url = 'http://stats.nba.com/stats/playerdashptreboundlogs?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&Period=0&PlayerID=202322&Season=2015-16&SeasonSegment=&SeasonType=Regular+Season&TeamID=0&VsConference=&VsDivision='
 
 
 # request the URL and parse the JSON for players
@@ -16,7 +59,7 @@ players_response = requests.get(players_url)
 players_response.raise_for_status() # raise exception if invalid response
 players = players_response.json()['resultSets'][0]['rowSet']
 
-# request the URL and parse the JSON for rebounds
+# request the URL and parse the JSON for shots
 shots_response = requests.get(shots_url)
 shots_response.raise_for_status() # raise exception if invalid response
 shots = shots_response.json()['resultSets'][0]['rowSet']
@@ -24,19 +67,20 @@ shots = shots_response.json()['resultSets'][0]['rowSet']
 #Hitting the API for rebounds
 for player in players:
     #TODO: externalize Directory so this can run on machines other then your laptop
-    with open('/Users/christianholmes/NBA/players/2014/Rebounds/' + str(player[0]) + '.json', 'w') as outfile:
-        players_response = requests.get('http://stats.nba.com/stats/playerdashptreboundlogs?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&Period=0&PlayerID=' + str(player[0]) + '&Season=2014-15&SeasonSegment=&SeasonType=Regular+Season&TeamID=0&VsConference=&VsDivision=')
+    with open(cs.shotDir + str(player[0]) + '.json', 'w') as outfile:
+        players_response = requests.get('http://stats.nba.com/stats/playerdashptshotlog?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&Period=0&PlayerID=' + str(player[0]) + '&Season=2015-16&SeasonSegment=&SeasonType=Regular+Season&TeamID=0&VsConference=&VsDivision=')
         players_response.raise_for_status() # raise exception if invalid response
         players = players_response.json()['resultSets'][0]['rowSet']
         json.dump(players, outfile)
+
 
 
 #Hitting the API for shots
 for player in players:
     print player
     #TODO: externalize Directory so this can run on machines other then your laptop
-    with open('/Users/christianholmes/NBA/players/2014/Shots/' + str(player[0]) + '.json', 'w') as outfile:
-        players_response = requests.get('http://stats.nba.com/stats/playerdashptshotlog?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&Period=0&PlayerID=' + str(player[0]) + '&Season=2014-15&SeasonSegment=&SeasonType=Regular+Season&TeamID=0&VsConference=&VsDivision=')
+    with open(cs.shotDir + str(player[0]) + '.json', 'w') as outfile:
+        players_response = requests.get('http://stats.nba.com/stats/playerdashptshotlog?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&Period=0&PlayerID=' + str(player[0]) + '&Season=2015-16&SeasonSegment=&SeasonType=Regular+Season&TeamID=0&VsConference=&VsDivision=')
         players_response.raise_for_status() # raise exception if invalid response
         shots = players_response.json()['resultSets'][0]['rowSet']
         json.dump(shots, outfile)
@@ -57,29 +101,29 @@ def get_date_shots(date):
 
 
 #Creates rebound files by game by play
-for i in os.listdir('/Users/christianholmes/NBA/players/2014/Rebounds/'):
+for i in os.listdir(cs.reboundDir):
     if not i.startswith('.'):
-        with open('/Users/christianholmes/NBA/players/2014/Rebounds/' + i , 'r') as data_file:
+        with open(cs.reboundDir + i , 'r') as data_file:
             data = json.load(data_file)
             for shot in data:
-                if not os.path.exists('/Users/christianholmes/NBA/players/2014/Games/' + shot[1][15:18]):
-                    os.makedirs('/Users/christianholmes/NBA/players/2014/Games/' + shot[1][15:18])
-                with open('/Users/christianholmes/NBA/players/2014/Games/' + shot[1][15:18] + '/' + str(get_date_shots(shot[1][0:12])) + '_rebound.json', 'a') as outfile:
+                if not os.path.exists(cs.gameDir + shot[1][15:18]):
+                    os.makedirs(cs.gameDir + shot[1][15:18])
+                with open(cs.gameDir + shot[1][15:18] + '/' + str(get_date_shots(shot[1][0:12])) + '_rebound.json', 'a') as outfile:
                     json.dump(shot, outfile)
 
 #Creates shot files by game by shot
-for i in os.listdir('/Users/christianholmes/NBA/players/2014/Shots/'):
+for i in os.listdir(cs.shotDir):
     if not i.startswith('.'):
-        with open('/Users/christianholmes/NBA/players/2014/Shots/' + i , 'r') as data_file:
+        with open(cs.shotDir + i , 'r') as data_file:
             data = json.load(data_file)
             for shot in data:
-                if not os.path.exists('/Users/christianholmes/NBA/players/2014/Games/' + shot[1][15:18]):
-                    os.makedirs('/Users/christianholmes/NBA/players/2014/Games/' + shot[1][15:18])
-                with open('/Users/christianholmes/NBA/players/2014/Games/' + shot[1][15:18] + '/' + str(get_date_shots(shot[1][0:12])) + '_shot.json', 'a') as outfile:
+                if not os.path.exists(cs.gameDir + shot[1][15:18]):
+                    os.makedirs(cs.gameDir + shot[1][15:18])
+                with open(cs.gameDir + shot[1][15:18] + '/' + str(get_date_shots(shot[1][0:12])) + '_shot.json', 'a') as outfile:
                     json.dump(shot, outfile)
 
 #Getting gamelog data by player
-gamelog_url = 'http://stats.nba.com/stats/leaguegamelog?Counter=1000&Direction=DESC&LeagueID=00&PlayerOrTeam=P&Season=2014-15&SeasonType=Regular+Season&Sorter=PTS'
+gamelog_url = 'http://stats.nba.com/stats/leaguegamelog?Counter=1000&Direction=DESC&LeagueID=00&PlayerOrTeam=P&Season=2015-16&SeasonType=Regular+Season&Sorter=PTS'
 
 games_response = requests.get(gamelog_url)
 games_response.raise_for_status() # raise exception if invalid response
@@ -96,12 +140,12 @@ def get_date_shots(date):
 
 #Make files for gamelog per player
 for player in games:
-    with open('/Users/christianholmes/NBA/players/2014/Games/' + player[3] +'/' + player[6] + '_gamelog.json', 'a') as outfile:
+    with open(cs.gameDir + player[3] +'/' + player[6] + '_gamelog.json', 'a') as outfile:
         json.dump(player, outfile)
 
 
 #Getting game log data by team
-team_url = 'http://stats.nba.com/stats/leaguegamelog?Counter=1000&Direction=DESC&LeagueID=00&PlayerOrTeam=T&Season=2014-15&SeasonType=Regular+Season&Sorter=PTS'
+team_url = 'http://stats.nba.com/stats/leaguegamelog?Counter=1000&Direction=DESC&LeagueID=00&PlayerOrTeam=T&Season=2015-16&SeasonType=Regular+Season&Sorter=PTS'
 
 team_response = requests.get(team_url)
 team_response.raise_for_status() # raise exception if invalid response
@@ -110,7 +154,7 @@ teams = {}
 for game in team:
     if game[3] not in teams:
         teams[game[3]] = game[2]
-    with open('/Users/christianholmes/NBA/players/2014/Teams/' + game[2] + '_game.json', 'a') as outfile:
+    with open(cs.teamDir + game[2] + '_game.json', 'a') as outfile:
         json.dump(game, outfile)
 
 
@@ -124,7 +168,7 @@ team = team_response.json()['resultSets'][0]['rowSet']
 
 for game in team:
     temp = teams[game[1]]
-    with open('/Users/christianholmes/NBA/players/2014/Teams/' + temp + '_opponent.json', 'a') as outfile:
+    with open(cs.teamDir + temp + '_opponent.json', 'a') as outfile:
         json.dump(game, outfile)
 
 [
@@ -134,7 +178,7 @@ for game in team:
 
 
 #Gamelogs by player
-gamelog_url = 'http://stats.nba.com/stats/leaguegamelog?Counter=1000&Direction=DESC&LeagueID=00&PlayerOrTeam=P&Season=2014-15&SeasonType=Regular+Season&Sorter=PTS'
+gamelog_url = 'http://stats.nba.com/stats/leaguegamelog?Counter=1000&Direction=DESC&LeagueID=00&PlayerOrTeam=P&Season=2015-16&SeasonType=Regular+Season&Sorter=PTS'
 
 ["SEASON_ID","PLAYER_ID","PLAYER_NAME","TEAM_ABBREVIATION","TEAM_NAME","GAME_ID","GAME_DATE","MATCHUP","WL","MIN","FGM","FGA","FG_PCT","FG3M","FG3A","FG3_PCT","FTM","FTA","FT_PCT","OREB","DREB","REB","AST","STL","BLK","TOV","PF","PTS","PLUS_MINUS","VIDEO_AVAILABLE"]
 
@@ -145,5 +189,6 @@ games = games_response.json()['resultSets'][0]['rowSet']
 #Make files for gamelog per player
 for player in games:
     print player
-    with open('/Users/christianholmes/NBA/players/2014/GameLogs/' + str(player[1]) + '.json', 'a') as outfile:
+    with open(cs.gamelogDir + str(player[1]) + '.json', 'a') as outfile:
         json.dump(player, outfile)
+

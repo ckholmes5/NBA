@@ -6,11 +6,11 @@ import os
 
 #TODO: Put this into the constants folder
 baseDir = '/Users/christianholmes/NBA'
-priceDir = baseDir + '/players/2014/Prices/'
+priceDir = baseDir + '/players/2015/Prices/'
 
 intDays = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
 intMonths = [10,11,12,1,2,3,4,5]
-intYears = [2014,2015]
+intYears = [2015,2016]
 
 class shotScrape:
 
@@ -54,14 +54,14 @@ def scrapeAllPrices():
         for mon in intMonths:
             for day in intDays:
 
-                if mon >= 10 and year == 2014:
+                if mon >= 10 and year == 2015:
                     tmp = shotScrape(day,mon,year)
                     tmp.doSavePrices()
                     print tmp
-                if mon <= 5 and year == 2015:
+                if mon <= 5 and year == 2016:
                     tmp = shotScrape(day, mon, year)
                     tmp.doSavePrices()
                     print tmp
 
 
-
+scrapeAllPrices()
