@@ -9,17 +9,17 @@ import json
 import os
 import pandas as pd
 import statsmodels.formula.api as smf
-import constants
+import constants as cs
 
 #TODO: ##################################### ALL MY TERRIBLE CODE #############################################
 def expectedBetas(playerID, opposingTeam):
-    shot_data = pd.read_json('/Users/christianholmes/NBA/players/2015/Shots/' + str(playerID) + '.json', )
+    shot_data = pd.read_json(cs.shotDir + str(playerID) + '.json', )
     shot_data.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
 
-    roster = open('/Users/christianholmes/NBA/players/2015/Rosters/' + opposingTeam + '.json', )
+    roster = open(cs.rosterDir + opposingTeam + '.json', )
     roster = json.load(roster)
 
-    defense = pd.read_json('/Users/christianholmes/NBA/players/2015/Defense/' + str(roster[0][0]) + '.json' , 'r')
+    defense = pd.read_json(cs.defenseDir + str(roster[0][0]) + '.json' , 'r')
     defense.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
 
     means = shot_data.mean()
@@ -29,8 +29,8 @@ def expectedBetas(playerID, opposingTeam):
     avgShotClock = means[4]
 
     leagueShotClock = 12.4624577172
-    leagueShotDistance = 13.6198586128
-    leagueDefenderDistance = 4.13361607305
+    leagueDefenderDistance = 13.6198586128
+    leagueShotDistance = 4.13361607305
 
     teamDiffShotClock = (leagueShotClock - avgShotClock) / leagueShotClock
     teamDiffShotDistance = (leagueShotDistance - avgShotDistance) / leagueShotDistance
@@ -42,7 +42,7 @@ def expectedBetas(playerID, opposingTeam):
 #Returns average shot percentage for given player -DONE
 def expectedShotPercentage(player,team):
 
-    shot_data = pd.read_json('/Users/christianholmes/NBA/players/2015/Shots/' + str(player) + '.json', )
+    shot_data = pd.read_json(cs.shotDir + str(player) + '.json', )
 
     shot_data.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
 
@@ -80,9 +80,9 @@ def expectedShotPercentage(player,team):
 #How many total shots the team he plays for takes on average
 def expectedTeamShots(team):
     totalShots = []
-    for i in os.listdir('/Users/christianholmes/NBA/players/2015/Games/' + team):
+    for i in os.listdir(cs.gameDir + team):
         if not i.startswith('.') and not i.endswith('rebound.json') and not i.endswith('gamelog.json'):
-            with open('/Users/christianholmes/NBA/players/2015/Games/' + team + '/' + i) as data_file:
+            with open(cs.gameDir + team + '/' + i) as data_file:
                 data = json.load(data_file)
                 totalShots.append(data)
     shots = 0
@@ -91,43 +91,32 @@ def expectedTeamShots(team):
         shots += len(i)
 
     #Total number of shots that a team takes on average
-    print totalShots
     avgTeamShots = float(shots)/float(len(totalShots))
     return avgTeamShots
 
 
 def teamFinder(player):
-    #First find out which team he plays for by going through the rosters
-    for i in os.listdir('/Users/christianholmes/NBA/players/2015/Rosters/'):
+    for i in os.listdir(cs.rosterDir):
         if not i.startswith('.'):
-            with open('/Users/christianholmes/NBA/players/2015/Rosters/' + i) as data_file:
+            with open(cs.rosterDir + i) as data_file:
                 data = json.load(data_file)
 
                 for roster in data:
                     if roster[0] == player:
                         team = roster[9]
                         id = roster[0]
-                        break
+                        return team
 
 
 def expectedShotsTaken(player,opponent):
 
     #First find out which team he plays for by going through the rosters
-    for i in os.listdir('/Users/christianholmes/NBA/players/2015/Rosters/'):
-        if not i.startswith('.'):
-            with open('/Users/christianholmes/NBA/players/2015/Rosters/' + i) as data_file:
-                data = json.load(data_file)
-
-                for roster in data:
-                    if roster[0] == player:
-                        team = roster[9]
-                        id = roster[0]
-                        break
+    team = teamFinder(player)
 
     #How many total shots the team he plays for takes on average
     totalShots = expectedTeamShots(team)
 
-    shots = pd.read_json('/Users/christianholmes/NBA/players/2015/Shots/' + str(player) + '.json')
+    shots = pd.read_json(cs.shotDir + str(player) + '.json')
     shots.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
 
     oldRows = float(len(shots.index))
@@ -140,15 +129,15 @@ def expectedShotsTaken(player,opponent):
 
     #Defense's effect on shots
     totalOpponentShots = 0
-    for i in os.listdir('/Users/christianholmes/NBA/players/2015/Teams/'):
+    for i in os.listdir(cs.teamDir):
         if not i.startswith('.') and not i.endswith('_game.json'):
-            with open ('/Users/christianholmes/NBA/players/2015/Teams/' + i) as data_file:
+            with open (cs.teamDir + i) as data_file:
                 data = json.load(data_file)
                 totalOpponentShots += data[0][8]
 
     totalOpponentShots = totalOpponentShots/30
 
-    with open('/Users/christianholmes/NBA/players/2015/Teams/' + opponent + '_opponent.json') as data_file:
+    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
         data = json.load(data_file)
         teamOpponentShots = data[0][8]
 
@@ -191,7 +180,7 @@ def leagueAverage(year):
 
 def expectedFouls(player,opponent):
     #Find the number of fouls he draws per game
-    with open('/Users/christianholmes/NBA/players/2015/GameLogs/' + str(player) + '.json') as dataFile:
+    with open(cs.gamelogDir + str(player) + '.json') as dataFile:
         dataFile = json.load(dataFile)
         fouls = []
         for game in dataFile:
@@ -200,15 +189,15 @@ def expectedFouls(player,opponent):
 
 
     totalFTs = 0
-    for i in os.listdir('/Users/christianholmes/NBA/players/2015/Teams/'):
+    for i in os.listdir(cs.teamDir):
         if not i.startswith('.') and not i.endswith('_game.json'):
-            with open ('/Users/christianholmes/NBA/players/2015/Teams/' + i) as data_file:
+            with open (cs.teamDir + i) as data_file:
                 data = json.load(data_file)
                 totalFTs += data[0][16]
 
     avgFouls = totalFTs/30
 
-    with open('/Users/christianholmes/NBA/players/2015/Teams/' + opponent + '_opponent.json') as data_file:
+    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
         data = json.load(data_file)
         opponentTeamFTs = data[0][16]
 
@@ -223,7 +212,7 @@ def expectedFouls(player,opponent):
 
 def expectedFouls(player,opponent):
     #Find the number of fouls he draws per game
-    with open('/Users/christianholmes/NBA/players/2015/GameLogs/' + str(player) + '.json') as dataFile:
+    with open(cs.gamelogDir + str(player) + '.json') as dataFile:
         dataFile = json.load(dataFile)
         fouls = []
         madeShots = []
@@ -237,15 +226,15 @@ def expectedFouls(player,opponent):
             fgPCT = 0.75
 
     totalFTs = 0
-    for i in os.listdir('/Users/christianholmes/NBA/players/2015/Teams/'):
+    for i in os.listdir(cs.teamDir):
         if not i.startswith('.') and not i.endswith('_game.json'):
-            with open ('/Users/christianholmes/NBA/players/2015/Teams/' + i) as data_file:
+            with open (cs.teamDir + i) as data_file:
                 data = json.load(data_file)
                 totalFTs += data[0][14]
 
     avgFouls = totalFTs/30
 
-    with open('/Users/christianholmes/NBA/players/2015/Teams/' + opponent + '_opponent.json') as data_file:
+    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
         data = json.load(data_file)
         opponentTeamFTs = data[0][14]
 
@@ -266,7 +255,7 @@ def expectedPoints(player,opposingTeam):
     fouls = expectedFouls(player,opposingTeam)
     #TODO: This should be a seperate function
 
-    with open('/Users/christianholmes/NBA/players/2015/Shots/' + str(player) + '.json') as data_file:
+    with open(cs.shotDir + str(player) + '.json') as data_file:
         shots = json.load(data_file)
         twos = 0
         for shot in shots:
@@ -285,20 +274,16 @@ def expectedPoints(player,opposingTeam):
 
 
 
-leagueShotClock = 12.4624577172
-leagueDefenderDistance = 13.6198586128
-leagueShotDistance = 4.13361607305
+leagueShotClock2014 = 12.4624577172
+leagueDefenderDistance2014 = 13.6198586128
+leagueShotDistance2014 = 4.13361607305
 
-#Find league averages of closest defender. (Should I do by shooting guard/center?). Then pop the averages into that formula. Then find the average distance of the closest defender in the team you're playing against.
-#Pop that number into the equation. Figure out the difference between the two. Then you know the expected difference in points per shot.
-#After that you need to find the expected number of shots he'll take in a game. Find the percentage of the total shots that he takes per game. Then find the average number of shots that the opposing team allows per year, vs the league average.
-#Then you can figure out the percent difference in total shots and the number of shots you expect this player's team to take. Then find the expected number of shots he'll take. Finally, multiply that number by the points per shot equation above. Then you know the number of shots he'll take per game!
 
 
 ########################REST OF DK POINTS####################################
 def expectedBlocks(player,opponent):
     #Find the number of blocks he averages per game
-    with open('/Users/christianholmes/NBA/players/2015/GameLogs/' + str(player) + '.json') as dataFile:
+    with open(cs.gamelogDir + str(player) + '.json') as dataFile:
         dataFile = json.load(dataFile)
         blocks = []
         for game in dataFile:
@@ -306,15 +291,15 @@ def expectedBlocks(player,opponent):
         avgPlayerBlocks = float(sum(blocks))/float(len(blocks))
 
     totalBlocks = 0
-    for i in os.listdir('/Users/christianholmes/NBA/players/2015/Teams/'):
+    for i in os.listdir(cs.teamDir):
         if not i.startswith('.') and not i.endswith('_game.json'):
-            with open ('/Users/christianholmes/NBA/players/2015/Teams/' + i) as data_file:
+            with open (cs.teamDir + i) as data_file:
                 data = json.load(data_file)
                 totalBlocks += data[0][22]
 
     avgBlocks = totalBlocks/30
 
-    with open('/Users/christianholmes/NBA/players/2015/Teams/' + opponent + '_opponent.json') as data_file:
+    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
         data = json.load(data_file)
         opponentTeamBlocks = data[0][22]
 
@@ -329,7 +314,7 @@ def expectedBlocks(player,opponent):
 
 def expectedSteals(player,opponent):
     #Find the number of blocks he averages per game
-    with open('/Users/christianholmes/NBA/players/2015/GameLogs/' + str(player) + '.json') as dataFile:
+    with open(cs.gamelogDir + str(player) + '.json') as dataFile:
         dataFile = json.load(dataFile)
         steals = []
         for game in dataFile:
@@ -337,15 +322,15 @@ def expectedSteals(player,opponent):
         avgPlayerSteals = float(sum(steals))/float(len(steals))
 
     totalSteals = 0
-    for i in os.listdir('/Users/christianholmes/NBA/players/2015/Teams/'):
+    for i in os.listdir(cs.teamDir):
         if not i.startswith('.') and not i.endswith('_game.json'):
-            with open ('/Users/christianholmes/NBA/players/2015/Teams/' + i) as data_file:
+            with open (cs.teamDir + i) as data_file:
                 data = json.load(data_file)
                 totalSteals += data[0][21]
 
     avgSteals = totalSteals/30
 
-    with open('/Users/christianholmes/NBA/players/2015/Teams/' + opponent + '_opponent.json') as data_file:
+    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
         data = json.load(data_file)
         opponentTeamSteals = data[0][21]
 
@@ -359,7 +344,7 @@ def expectedSteals(player,opponent):
 
 def expectedAssists1(player,opponent):
     #Find the number of blocks he averages per game
-    with open('/Users/christianholmes/NBA/players/2015/GameLogs/' + str(player) + '.json') as dataFile:
+    with open(cs.gamelogDir + str(player) + '.json') as dataFile:
         dataFile = json.load(dataFile)
         assists = []
         for game in dataFile:
@@ -367,15 +352,15 @@ def expectedAssists1(player,opponent):
         avgPlayerAssists = float(sum(assists))/float(len(assists))
 
     totalAssists = 0
-    for i in os.listdir('/Users/christianholmes/NBA/players/2015/Teams/'):
+    for i in os.listdir(cs.teamDir):
         if not i.startswith('.') and not i.endswith('_game.json'):
-            with open ('/Users/christianholmes/NBA/players/2015/Teams/' + i) as data_file:
+            with open (cs.teamDir + i) as data_file:
                 data = json.load(data_file)
                 totalAssists += data[0][19]
 
     avgAssists = totalAssists/30
 
-    with open('/Users/christianholmes/NBA/players/2015/Teams/' + opponent + '_opponent.json') as data_file:
+    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
         data = json.load(data_file)
         opponentTeamAssists = data[0][19]
 
@@ -389,7 +374,7 @@ def expectedAssists1(player,opponent):
 
 def expectedTurnovers(player, opponent):
     #Find the number of blocks he averages per game
-    with open('/Users/christianholmes/NBA/players/2015/GameLogs/' + str(player) + '.json') as dataFile:
+    with open(cs.gamelogDir + str(player) + '.json') as dataFile:
         dataFile = json.load(dataFile)
         turnovers = []
         for game in dataFile:
@@ -397,15 +382,15 @@ def expectedTurnovers(player, opponent):
         avgPlayerTurnovers = float(sum(turnovers))/float(len(turnovers))
 
     totalTurnovers = 0
-    for i in os.listdir('/Users/christianholmes/NBA/players/2015/Teams/'):
+    for i in os.listdir(cs.teamDir):
         if not i.startswith('.') and not i.endswith('_game.json'):
-            with open ('/Users/christianholmes/NBA/players/2015/Teams/' + i) as data_file:
+            with open (cs.teamDir + i) as data_file:
                 data = json.load(data_file)
                 totalTurnovers += data[0][20]
 
     avgTurnovers = totalTurnovers/30
 
-    with open('/Users/christianholmes/NBA/players/2015/Teams/' + opponent + '_opponent.json') as data_file:
+    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
         data = json.load(data_file)
         opponentTeamTurnovers = data[0][20]
 
@@ -420,7 +405,7 @@ def expectedTurnovers(player, opponent):
 
 def expectedRebounds(player, opponent):
     #Find the number of blocks he averages per game
-    with open('/Users/christianholmes/NBA/players/2015/GameLogs/' + str(player) + '.json') as dataFile:
+    with open(cs.gamelogDir + str(player) + '.json') as dataFile:
         dataFile = json.load(dataFile)
         rebounds = []
         for game in dataFile:
@@ -428,15 +413,15 @@ def expectedRebounds(player, opponent):
         avgPlayerRebounds = float(sum(rebounds))/float(len(rebounds))
 
     totalRebounds = 0
-    for i in os.listdir('/Users/christianholmes/NBA/players/2015/Teams/'):
+    for i in os.listdir(cs.teamDir):
         if not i.startswith('.') and not i.endswith('_game.json'):
-            with open ('/Users/christianholmes/NBA/players/2015/Teams/' + i) as data_file:
+            with open (cs.teamDir + i) as data_file:
                 data = json.load(data_file)
                 totalRebounds += data[0][18]
 
     avgRebounds = totalRebounds/30
 
-    with open('/Users/christianholmes/NBA/players/2015/Teams/' + opponent + '_opponent.json') as data_file:
+    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
         data = json.load(data_file)
         opponentTeamRebounds = data[0][18]
 
@@ -529,26 +514,11 @@ def statArraySetup(urlNumber):
         name = player['fnu'] + ' ' + player['lnu']
         name = name.replace(' ', '_').lower()
 
-        if name == 'j.j._barea':
-            name = 'jose_barea' #TODO: WTF jj barea
-        if name == 'lou_williams':
-            name = 'louis_williams' #TODO: OMG
-        if name == "d'angelo_russell":
-            name = 'dangelo_russell'
-        if name == 'larry_nance_jr.':
-            name = 'larry_nance'
-        if name == 'o.j._mayo':
-            name = 'oj_mayo'
-        if name == "kyle_o'quinn":
-            name = 'kyle_oquinn'
-        if name == "e'twaun_moore":
-            name = 'etwaun_moore'
-        if name == 'louis_amundson':
-            name = 'lou_amundson'
-        if name == "tim_hardaway_jr.":
-            name = 'timothy_hardaway'
-        if name == "johnny_o'bryant":
-            name = 'johnny_obryant'
+        renameDict = {'j.j._barea': 'jose_barea', 'lou_williams': 'louis_williams', "d'angelo_russell": 'dangelo_russell', 'larry_nance_jr.': 'larry_nance', 'o.j._mayo': 'oj_mayo', "kyle_o'quinn": 'kyle_oquinn', "e'twaun_moore" : 'etwaun_moore', 'louis_amundson': 'lou_amundson', "tim_hardaway_jr.": 'timothy_hardaway', "johnny_o'bryant": 'johnny_obryant'}
+
+        if name in renameDict:
+            name == renameDict[name]
+
         print name
         for i in allPlayers:
             if i[5] == name:
@@ -635,36 +605,35 @@ class playerDayFromRotoWorld:
 
      def __lt__(self, other):
          return self.getValue() > other.getValue()
-
-	 def out(self):
-		 print self.name + ' ' + self.salary + ' '
+     def out(self):
+        print self.name + ' ' + self.salary + ' '
 
 class shotScrape:
     def __init__(self, days, mons, years, url=None, do_replacement=False):
-    	self.data=None
-    	self.days = days
-    	self.mons = mons
-    	self.years = years
-    	if url is None:
-    		self.url='http://rotoguru1.com/cgi-bin/hyday.pl?mon=${mon}&day=${day}&year=${year}&game=dk&scsv=10'
-    	if do_replacement:
-    		self.url = self.url.replace('${mon}', self.mons)
-    		self.url = self.url.replace('${day}', self.days)
-    		self.url = self.url.replace('${year}', self.years)
+        self.data=None
+        self.days = days
+        self.mons = mons
+        self.years = years
+        if url is None:
+            self.url='http://rotoguru1.com/cgi-bin/hyday.pl?mon=${mon}&day=${day}&year=${year}&game=dk&scsv=10'
+        if do_replacement:
+            self.url = self.url.replace('${mon}', self.mons)
+            self.url = self.url.replace('${day}', self.days)
+            self.url = self.url.replace('${year}', self.years)
 
     def get(self, reset=False):
-    	if reset or self.data is None:
-    		page = requests.get(self.url)
-    		self.data = page.content
-    	t = html.fromstring(self.data)
-    	#rawDayData = t.xpath('//table/pre/text()') #TODO: You
+        if reset or self.data is None:
+            page = requests.get(self.url)
+            self.data = page.content
+        t = html.fromstring(self.data)
+        #rawDayData = t.xpath('//table/pre/text()') #TODO: You
     	#print "this is rawDayData: "
     	#print rawDayData
     	rawDayData = statArraySetup(8266)
-    	print "This is rawDayData:"
-    	print rawDayData
+        print "This is rawDayData:"
+        print rawDayData
 
-    	players = []
+        players = []
         for player in rawDayData[0].split('|||')[1:]:
             print player
             if player is '' :
@@ -673,32 +642,32 @@ class shotScrape:
         return players
 
 class dkTeam:
-	team_salary=50000
-	def __init__(self):
-		self.players = []
-		self.pg = None
-		self.sg = None
-		self.sf = None
-		self.c = None
-		self.pf = None
-		self.util = None
-		self.g = None
-		self.f = None
+    team_salary=50000
+    def __init__(self):
+        self.players = []
+        self.pg = None
+        self.sg = None
+        self.sf = None
+        self.c = None
+        self.pf = None
+        self.util = None
+        self.g = None
+        self.f = None
 
-	def isOverCap(self):
-		return sum([p.salary for p in self.players]) > self.team_salary
+    def isOverCap(self):
+        return sum([p.salary for p in self.players]) > self.team_salary
 
-	def isValidTeam(self):
-		if self.isOverCap():
-			return False
-		if self.pg is None or self.sg is None or self.sf is None or self.pf is None:
-			return False
-		if self.util is None or self.c is None or self.f is None or self.g is None:
-			return False
-		return True
+    def isValidTeam(self):
+        if self.isOverCap():
+            return False
+        if self.pg is None or self.sg is None or self.sf is None or self.pf is None:
+            return False
+        if self.util is None or self.c is None or self.f is None or self.g is None:
+            return False
+        return True
 
-	def getNumRemainingPlayers(self):
-		return 8 - len(self.players)
+    def getNumRemainingPlayers(self):
+        return 8 - len(self.players)
 
 	def copy(self, other):
 		other.players = list(self.players)
@@ -995,7 +964,10 @@ def __main__():
     players.sort()
     doThing(players)
 
-print __main__()
+print shotScrape('0', '0', '0', None, True).get()
+
+#Scrape all Rotoguru
+
 
 
 
