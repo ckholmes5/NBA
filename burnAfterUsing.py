@@ -1,55 +1,122 @@
-
+from lxml import html
 import requests
+import operator
+import time
 import json
 import os
+import pandas as pd
+import statsmodels.formula.api as smf
+import constants as cs
 import datetime
-months = {'APR' : 4, 'JAN' : 1,'FEB' : 2,'MAR' : 3,'MAY' : 5,'JUN' : 6,'JUL' : 7,'AUG' : 8,'SEP' : 9,'OCT' : 10,'NOV' : 11,'DEC' : 12, '01' : 1, '02' : 2, '03' : 3,'04' : 4, '05' : 5, '06' : 4, '07' : 7, '08' : 8, '09' : 9, '10' : 10, '11' : 11, '12' : 12, '13' : 13, '14' : 14, '15' : 15, '16' : 16, '17' : 17, '18' : 18, '19' : 19, '20' : 20, '21' : 21, '22' : 22, '23' : 23, '24' : 24, '25' : 25, '26' : 26, '27' : 27, '28' : 28, '29' : 29, '30' : 30, '31' : 31}
-date = [u'0021401217', u'APR 15, 2015 - CHI vs. ATL', u'H', u'W', 6, 1, 1, u'3:37', u'Defensive', u'Uncontested', 0, 2.61, u'Carroll, DeMarre', 201960, u'missed 3FG', 24.09, 0, 1, 1]
+
+now = datetime.datetime.now()
+now = datetime.datetime.now()
+months = {'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5, 'JUN': 6, 'DEC': 12, 'NOV':11, 'OCT':10}
+
+def expectedBetas(playerID, opposingTeam, new_date = now):
+    roster = open(cs.rosterDir + opposingTeam + '.json', )
+    roster = json.load(roster)
+
+    with open(cs.shotDir + str(playerID) + '.json') as data_file:
+        shot_data = json.load(data_file)
+
+    #Every shot the player made
+    game_data = []
+    for i in shot_data:
+
+        mon = months[i[1][0:3]]
+        day = int(i[1][4:6])
+        year = int(i[1][8:13])
+
+        current_date = datetime.datetime(year,mon,day)
+
+        if current_date < new_date:
+            game_data.append(i)
+
+    #Every shot against the team they're going to be playing against
+    defense = []
+    for player in roster:
+        with open(cs.defenseDir + str(player[0]) + '.json') as defense_stuff:
+            defense_data = json.load(defense_stuff)
+            for i in defense_data:
+                mon = months[i[1][0:3]]
+                day = int(i[1][4:6])
+                year = int(i[1][8:13])
+                current_date = datetime.datetime(year,mon,day)
+                if current_date < new_date:
+                    defense.append(i)
+
+    playerDefenderDistance = []
+    playerShotDistance = []
+    playerShotClock = []
+
+    for shot in game_data:
+        playerDefenderDistance.append(shot[16])
+        playerShotDistance.append(shot[11])
+        if shot[8] != None:
+            playerShotClock.append(shot[8])
+
+    avgPlayerDefenderDistance = sum(playerDefenderDistance)/len(playerDefenderDistance)
+    avgPlayerShotDistance = sum(playerShotDistance)/len(playerShotDistance)
+    avgPlayerShotClock = sum(playerShotClock)/len(playerShotClock)
+
+    teamDefenderDistance = []
+    teamShotDistance = []
+    teamShotClock = []
+
+    for shot in defense:
+        teamDefenderDistance.append(shot[16])
+        teamShotDistance.append(shot[11])
+        if shot[8] != None:
+            teamShotClock.append(shot[8])
+
+    avgTeamDefenderDistance = sum(teamDefenderDistance)/len(teamDefenderDistance)
+    avgTeamShotDistance = sum(teamShotDistance)/len(teamShotDistance)
+    avgTeamShotClock = sum(teamShotClock)/len(teamShotClock)
+
+    #TODO: Find a better way to get these numbers
+    leagueShotClock = 12.4624577172
+    leagueDefenderDistance = 4.13361607305
+    leagueShotDistance = 13.6198586128
+
+    teamDiffShotClock = (leagueShotClock - avgTeamShotClock) / leagueShotClock
+    teamDiffShotDistance = (leagueShotDistance - avgTeamShotDistance) / leagueShotDistance
+    teamDiffDefenderDistance = (leagueDefenderDistance - avgTeamDefenderDistance) / leagueDefenderDistance
+
+    return [avgPlayerShotClock, avgPlayerShotDistance, avgPlayerDefenderDistance, teamDiffShotClock, teamDiffShotDistance, teamDiffDefenderDistance]
 
 
-def get_date_shots(date):
-    month = str(date[0:3])
-    day = str(date[4:6])
-    year = int(date[8:12])
-    return datetime.date(year, months[month], months[day])
-
-for i in os.listdir('/Users/christianholmes/NBA/players/2015/Shots/'):
-    if not i.startswith('.'):
-        with open('/Users/christianholmes/NBA/players/2015/Shots/' + i , 'r') as data_file:
-            data = json.load(data_file)
-            for shot in data:
-                if not os.path.exists('/Users/christianholmes/NBA/players/2015/Games/' + shot[1][15:18]):
-                    os.makedirs('/Users/christianholmes/NBA/players/2015/Games/' + shot[1][15:18])
-                with open('/Users/christianholmes/NBA/players/2015/Games/' + shot[1][15:18] + '/' + str(get_date_shots(shot[1][0:12])) + '_shot.json', 'a') as outfile:
-                    json.dump(shot, outfile)
-
-for i in os.listdir('/Users/christianholmes/NBA/players/2015/Rebounds/'):
-    if not i.startswith('.'):
-        with open('/Users/christianholmes/NBA/players/2015/Rebounds/' + i , 'r') as data_file:
-            data = json.load(data_file)
-            for shot in data:
-                if not os.path.exists('/Users/christianholmes/NBA/players/2015/Games/' + shot[1][15:18]):
-                    os.makedirs('/Users/christianholmes/NBA/players/2015/Games/' + shot[1][15:18])
-                with open('/Users/christianholmes/NBA/players/2015/Games/' + shot[1][15:18] + '/' + str(get_date_shots(shot[1][0:12])) + '_rebound.json', 'a') as outfile:
-                    json.dump(shot, outfile)
-
-#Getting gamelog data by player
-gamelog_url = 'http://stats.nba.com/stats/leaguegamelog?Counter=1000&Direction=DESC&LeagueID=00&PlayerOrTeam=P&Season=2015-16&SeasonType=Regular+Season&Sorter=PTS'
-
-games_response = requests.get(gamelog_url)
-games_response.raise_for_status() # raise exception if invalid response
-games = games_response.json()['resultSets'][0]['rowSet']
-months = {'APR' : 4, 'JAN' : 1,'FEB' : 2,'MAR' : 3,'MAY' : 5,'JUN' : 6,'JUL' : 7,'AUG' : 8,'SEP' : 9,'OCT' : 10,'NOV' : 11,'DEC' : 12, '01' : 1, '02' : 2, '03' : 3,'04' : 4, '05' : 5, '06' : 4, '07' : 7, '08' : 8, '09' : 9, '10' : 10, '11' : 11, '12' : 12, '13' : 13, '14' : 14, '15' : 15, '16' : 16, '17' : 17, '18' : 18, '19' : 19, '20' : 20, '21' : 21, '22' : 22, '23' : 23, '24' : 24, '25' : 25, '26' : 26, '27' : 27, '28' : 28, '29' : 29, '30' : 30, '31' : 31}
+def expectedShotPercentage(player,team, new_date = now):
+    shot_data = []
+    with open(cs.shotDir + str(player) + '.json', ) as data_file:
+        data = json.load(data_file)
+        for shot in data:
+            mon = months[shot[1][0:3]]
+            day = int(shot[1][4:6])
+            year = int(shot[1][8:13])
+            current_date = datetime.datetime(year,mon,day)
+            if current_date < new_date:
+                shot_data.append(shot)
 
 
-#Another date function. How is this different from the first? Not sure but it works and I don't want to mess with it
-def get_date_shots(date):
-    month = date[0:3]
-    day = date[4:6]
-    year = int(float(date[8:12]))
-    return datetime.date(year, months[month], months[day])
+    pd_shot_data = pd.DataFrame(shot_data)
+    pd_shot_data.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
 
-#Make files for gamelog per player
-for player in games:
-    with open('/Users/christianholmes/NBA/players/2015/Games/' + player[3] +'/' + player[6] + '_gamelog.json', 'a') as outfile:
-        json.dump(player, outfile)
+    lm = smf.ols(formula='FGM ~ CLOSE_DEF_DIST + SHOT_DIST + SHOT_CLOCK', data=pd_shot_data).fit()
+
+    intercept = lm.params[0]
+    defenderDistance = lm.params[1]
+    shotDistance = lm.params[2]
+    shotClock = lm.params[3]
+
+    teamDiff = expectedBetas(player,team, new_date)
+
+    #Shooting Percent against specific team
+    spefTeam = intercept + shotClock*(teamDiff[0] + teamDiff[3]*teamDiff[0]) + shotDistance*(teamDiff[1] + teamDiff[4]*teamDiff[1]) + defenderDistance*(teamDiff[2] + teamDiff[5]*teamDiff[2])
+
+    return spefTeam
+
+slap = datetime.datetime(2015,12,31)
+
+
+print expectedShotPercentage(977, 'BOS', slap)

@@ -3,6 +3,9 @@ import json
 import os
 import datetime
 import constants as cs
+from lxml import html
+
+
 
 #Change to 2014-15 for other year of data
 season = '2015-16'
@@ -14,7 +17,7 @@ rebound_url = 'http://stats.nba.com/stats/playerdashptreboundlogs?DateFrom=&Date
 gamelog_url = 'http://stats.nba.com/stats/leaguegamelog?Counter=1000&Direction=DESC&LeagueID=00&PlayerOrTeam=P&Season=' + season + '&SeasonType=Regular+Season&Sorter=PTS'
 team_url = 'http://stats.nba.com/stats/leaguegamelog?Counter=1000&Direction=DESC&LeagueID=00&PlayerOrTeam=T&Season=' + season + '&SeasonType=Regular+Season&Sorter=PTS'
 opponent_url = 'http://stats.nba.com/stats/leaguedashteamstats?Conference=&DateFrom=&DateTo=&Division=&GameScope=&GameSegment=&LastNGames=0&LeagueID=00&Location=&MeasureType=Opponent&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PaceAdjust=N&PerMode=PerGame&Period=0&PlayerExperience=&PlayerPosition=&PlusMinus=N&Rank=N&Season=' + season + '&SeasonSegment=&SeasonType=Regular+Season&ShotClockRange=&StarterBench=&TeamID=0&VsConference=&VsDivision='
-
+roster_dir = 'http://stats.nba.com/stats/commonallplayers?IsOnlyCurrentSeason=1&LeagueID=00&Season=' + season
 
 #Dates Function
 def get_date_shots(date):
@@ -22,7 +25,7 @@ def get_date_shots(date):
     day = str(date[4:6])
     year = int(date[8:12])
     return datetime.date(year, months[month], months[day])
-
+'''
 #Player ID Data
 players_response = requests.get(players_url)
 players_response.raise_for_status() # raise exception if invalid response
@@ -84,15 +87,15 @@ for i in os.listdir(cs.shotDir):
                 with open(cs.defenseDir + str(shot[15]) + '.json', 'a') as outfile:
                     json.dump(shot, outfile)
 
-'''
+
 #Uncomment this code if you wish to group defense by the team a given player was playing defense against
-                if shot[1][19] == 'v':
-                    if not os.path.exists(cs.defenseDir + shot[1][23:26]):
-                        os.makedirs(cs.defenseDir + shot[1][23:26])
-                elif shot[1][19] == '@':
-                    if not os.path.exists(cs.defenseDir + shot[1][21:24]):
-                        os.makedirs(cs.defenseDir + shot[1][21:24])
-'''
+                #f shot[1][19] == 'v':
+                #    if not os.path.exists(cs.defenseDir + shot[1][23:26]):
+                #        os.makedirs(cs.defenseDir + shot[1][23:26])
+                #elif shot[1][19] == '@':
+                #    if not os.path.exists(cs.defenseDir + shot[1][21:24]):
+                #        os.makedirs(cs.defenseDir + shot[1][21:24])
+
 
 
 ####### PLAYER GAMELOG SETUP #######
@@ -141,11 +144,156 @@ for game in opponent:
     with open(cs.teamDir + temp + '_opponent.json', 'a') as outfile:
         json.dump(game, outfile)
 
-#TODO: NEED PLAYERDIR AND ROSTERDIR
+###### ROSTER DATA SETUP ########
+rosters_response = requests.get(roster_dir)
+rosters_response.raise_for_status()
+rosters = rosters_response.json()['resultSets'][0]['rowSet']
+
+for player in rosters:
+    with open(cs.rosterDir + player[9] + '.json', 'a') as outfile:
+        json.dump(player, outfile)
 
 
 
-#TODO: ENDED HERE ON 1/17 ####### SHOT SCRAPING FROM ROTOGURU ########
+####### DK POINTS SETUP #######
+for i in os.listdir(cs.gamelogDir):
+    if not i.startswith('.'):
+        with open(cs.gamelogDir + i, 'r') as dataFile:
+            data = json.load(dataFile)
+            for player in data:
+                ddpoints = [player[27], player[21], player[22], player[23], player[24]]
+                dfsPoints = player[27] + 0.5 * player[13] + 1.25 * player[21] + 1.5 * player[22] + 2 * player[23] + 2 * player[24] - 0.5 * player[25]
+                temp = 0
+                for i in ddpoints:
+                    if i > 10:
+                        temp += 1
+                if temp >= 2:
+                    dfsPoints += 1.5
+                if temp >= 3:
+                    dfsPoints += 3
+                newPlayer = [player[1], player[2], player[3], player[7], dfsPoints]
+
+                with open(cs.dkPointsDir + player[6], 'a') as dataFile:
+                    json.dump(newPlayer, dataFile)
+
+
+#"SEASON_ID",
+"PLAYER_ID", 0
+"PLAYER_NAME", 1
+"TEAM_ABBREVIATION", 2
+"TEAM_NAME", 3
+"GAME_ID", 4
+"GAME_DATE", 5
+"MATCHUP",  6
+"WL", 7
+"MIN", 8
+"FGM", 9
+"FGA", 10
+"FG_PCT", 11
+"FG3M", 12
+"FG3A", 13
+"FG3_PCT", 14
+"FTM", 15
+"FTA", 16
+"FT_PCT", 17
+"OREB", 18
+"DREB", 19
+"REB", 20
+"AST", 21
+"STL", 22
+"BLK", 23
+"TOV", 24
+"PF", 25
+"PTS", 26
+"PLUS_MINUS", 27
+"VIDEO_AVAILABLE", 28
+'''
+
+
+#TODO: ENDED HERE ON 1/17 ####### PRICE SCRAPING FROM ROTOGURU ########
+class playerDayFromRotoWorld:
+
+     def __init__(self, statArray):
+         self.date = statArray[0]
+         self.gid = statArray[1]
+         self.pos = statArray[2]
+         self.name = statArray[3]
+         self.starter = len(statArray[4]) == 0
+         if statArray[5] == 'None':
+             self.dkpoints = 0
+         else:
+             self.dkpoints = float(statArray[5])
+         if statArray[6] == 'N/A':
+             self.salary = 100000
+         else:
+             self.salary = int(statArray[6].strip('$').replace(',',''))
+         self.team = statArray[7]
+         self.home = statArray[8] == 'H'
+         self.opponent = statArray[9]
+         self.team_score = statArray[10]
+         self.opponent_score = statArray[11]
+         self.minutes = statArray[12]
+         statLine = statArray[13].split(' ')
+         for stat in statLine:
+             if stat.find('pt') > -1:
+                  self.points = int(stat.strip('pt'))
+             if stat.find('rb') > -1:
+                  self.rebounds = int(stat.strip('rb'))
+             if stat.find('as') > -1:
+                  self.assists = int(stat.strip('as'))
+             if stat.find('st') > -1:
+                  self.steals = int(stat.strip('st'))
+             if stat.find('to') > -1:
+                  self.turnovers = int(stat.strip('to'))
+             if stat.find('trey') > -1:
+                  self.threes = int(stat.strip('trey'))
+             if stat.find('fg') > -1:
+                  self.field_goals_attempted = int(stat.strip('fg').split('-')[1])
+                  self.field_goals_made = int(stat.strip('fg').split('-')[0])
+             if stat.find('ft') > -1:
+                  self.free_throws_attempted = int(stat.strip('ft').split('-')[1])
+                  self.free_throws_made = int(stat.strip('ft').split('-')[0])
+
+     def getValue(self):
+         if self.dkpoints == 0:
+             return -10000
+         return self.dkpoints * self.dkpoints * self.dkpoints / self.salary
+
+     def __lt__(self, other):
+         return self.getValue() > other.getValue()
+     def out(self):
+        print self.name + ' ' + self.salary + ' '
+
+class ApiPull:
+    url=''
+    macros={}
+
+    def __init__(self, url, macros):
+        self.url = url
+        self.macros = macros
+
+    def get(self):
+         response = requests.get(self.getActualUrl())
+         response.raise_for_status()
+         return response.json()['resultSets'][0]['rowSet']
+
+    def getActualUrl(self):
+        tmp=self.url
+        for k,v in self.macros.iteritems():
+              tmp = tmp.replace('${' + k + '}', v)
+        return tmp
+class playersPull:
+    players_url = 'http://stats.nba.com/stats/commonallplayers?IsOnlyCurrentSeason=0&LeagueID=00&Season=${season}'
+    apiPull = None
+
+    def __init__(self, player_macros=None):
+         if player_macros is None:
+              player_macros = {'season': '2015-16'}
+         self.apiPull = ApiPull(self.players_url, player_macros)
+
+    def get(self):
+         return self.apiPull.get()
+
 class shotScrape:
     def __init__(self, days, mons, years, url=None, do_replacement=False):
         self.data=None
@@ -164,30 +312,56 @@ class shotScrape:
             page = requests.get(self.url)
             self.data = page.content
         t = html.fromstring(self.data)
-        #rawDayData = t.xpath('//table/pre/text()') #TODO: You
-    	#print "this is rawDayData: "
-    	#print rawDayData
-    	rawDayData = statArraySetup(8266)
-        print "This is rawDayData:"
-        print rawDayData
+        rawDayData = t.xpath('//table/pre/text()') #TODO: This is the toggle between using draftkings and rotoworld.
+    	#rawDayData = statArraySetup(8266)
+        rawDayDataList = rawDayData[0].split('\n')
+        prices = []
 
-        players = []
-        for player in rawDayData[0].split('|||')[1:]:
-            print player
-            if player is '' :
-                continue
-            players.append(playerDayFromRotoWorld(player.split(';')))
-        return players
+        for i in rawDayDataList:
+            prices.append(i.split(';'))
+
+        del prices[0]
+        del prices[-1]
 
 
-ssDays2014 = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
-ssMonths2014 = [10,11,12,1,2,3,4,5]
-ssYear = 2014
+        for player in prices:
+            if player[3] != '':
+                name = player[3].split(', ')
+                name = name[1] + ' ' + name[0]
+                name = name.replace(' ', '_').lower()
+
+
+                renameDict = {'j.j._barea': 'jose_barea', 'lou_williams': 'louis_williams', "d'angelo_russell": 'dangelo_russell', 'larry_nance_jr.': 'larry_nance', 'o.j._mayo': 'oj_mayo', "kyle_o'quinn": 'kyle_oquinn', "e'twaun_moore" : 'etwaun_moore', 'louis_amundson': 'lou_amundson', "tim_hardaway_jr.": 'timothy_hardaway', "johnny_o'bryant": 'johnny_obryant'}
+
+                if name in renameDict:
+                    name == renameDict[name]
+
+
+                date = player[0][0:4] + '-' + player[0][4:6] + '-' + player[0][6:8]
+
+                newPlayer = [name, player[6],player[12]]
+                print newPlayer
+
+                with open(cs.priceDir + str(date), 'a') as outfile:
+                    json.dump(newPlayer,outfile)
+
+
+relDays = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31']
+relMonths = ['10','11','12','1','2','3','4','5', '6']
+relYears = ['2014','2015','2016']
 
 #2014 = 10/28/14 - 4/15/2015
 #2015 = 10/27/15 - 4/13/2016
 
 def getRotoGuru(day, month, year):
     opponent = shotScrape(day, month, year, None, True).get()
+    print opponent
 
+def getAllDays(days, months, years):
+    for year in years:
+        for month in months:
+            for day in days:
+                getRotoGuru(day, month, year)
 
+#getAllDays(relDays,relMonths,relYears)
+getAllDays(relDays, relMonths, relYears)

@@ -7,5 +7,5 @@ teamDir = baseDir + '/Teams/'
 rosterDir = baseDir + '/Rosters/'
 playersDir = baseDir + '/Players/'
 defenseDir = baseDir + '/Defense/'
-
-
+dkPointsDir = baseDir + '/dkPoints/'
+priceDir = baseDir + '/Prices/'

@@ -531,26 +531,10 @@ def statArraySetup(urlNumber):
         name = player['fnu'] + ' ' + player['lnu']
         name = name.replace(' ', '_').lower()
 
-        if name == 'j.j._barea':
-            name = 'jose_barea' #TODO: WTF jj barea
-        if name == 'lou_williams':
-            name = 'louis_williams' #TODO: OMG
-        if name == "d'angelo_russell":
-            name = 'dangelo_russell'
-        if name == 'larry_nance_jr.':
-            name = 'larry_nance'
-        if name == 'o.j._mayo':
-            name = 'oj_mayo'
-        if name == "kyle_o'quinn":
-            name = 'kyle_oquinn'
-        if name == "e'twaun_moore":
-            name = 'etwaun_moore'
-        if name == 'louis_amundson':
-            name = 'lou_amundson'
-        if name == "tim_hardaway_jr.":
-            name = 'timothy_hardaway'
-        if name == "johnny_o'bryant":
-            name = 'johnny_obryant'
+        renameDict = {'j.j._barea': 'jose_barea', 'lou_williams': 'louis_williams', "d'angelo_russell": 'dangelo_russell', 'larry_nance_jr.': 'larry_nance', 'o.j._mayo': 'oj_mayo', "kyle_o'quinn": 'kyle_oquinn', "e'twaun_moore" : 'etwaun_moore', 'louis_amundson': 'lou_amundson', "tim_hardaway_jr.": 'timothy_hardaway', "johnny_o'bryant": 'johnny_obryant'}
+        if name in renameDict:
+            name = renameDict[name]
+
         print name
         for i in allPlayers:
             if i[5] == name:
@@ -563,7 +547,7 @@ def statArraySetup(urlNumber):
                     dkPoints = DKPoints(id, 'NYK')
                     todaysPlayers[name] = dkPoints
                 except ValueError: #TODO: Only for 2014, this can be removed once we have 2015...right?
-                    todaysPlayers[name] = None
+                    todaysPlayers[name] = 'None'
 
         statArray = statArray + time.strftime("%Y%m%d") + ';'
         statArray = statArray + 'None' + ';' #'gameID'
@@ -579,10 +563,8 @@ def statArraySetup(urlNumber):
         statArray = statArray + 'None' + ';' #'opponentScore'
         statArray = statArray + 'None' + ';' #'minutes'
         statArray = statArray + 'None' + ';' #'statLine'
-        playerArray = playerArray + statArray + "\n"
-        print playerArray
-    return playerArray
-
+        playerArray = playerArray + statArray + "|||"
+    return [playerArray]
 
 
 ##########################START HERE TOMORROW######################################

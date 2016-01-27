@@ -3,7 +3,7 @@ import requests
 import json
 import os
 import datetime
-import constants
+import constants as cs
 
 # If these ever change, now you only have to change them in one location
 
