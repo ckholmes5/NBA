@@ -14,6 +14,8 @@ import datetime
 now = datetime.datetime.now()
 months = {'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5, 'JUN': 6, 'DEC': 12, 'NOV':11, 'OCT':10}
 
+number_dict1 = {'block': 24, 'steal': 23, 'assist': 22, 'turnover': 25, 'rebound': 21}
+number_dict2 = {'block': 22, 'steal': 21, 'assist': 19, 'turnover': 20, 'rebound': 18}
 
 #TODO: ##################################### ALL MY TERRIBLE CODE #############################################
 def expectedBetas(playerID, opposingTeam, new_date = now):
@@ -48,8 +50,6 @@ def expectedBetas(playerID, opposingTeam, new_date = now):
                 current_date = datetime.datetime(year,mon,day)
                 if current_date < new_date:
                     defense.append(i)
-    print game_data
-    print defense
 
     playerDefenderDistance = []
     playerShotDistance = []
@@ -157,8 +157,7 @@ def teamFinder(player):
                         id = roster[0]
                         return team
 
-#TODO: START HERE ON 1/27
-def expectedShotsTaken(player,opponent):
+def expectedShotsTaken(player, opponent, new_date = now):
 
     #First find out which team he plays for by going through the rosters
     team = teamFinder(player)
@@ -168,7 +167,19 @@ def expectedShotsTaken(player,opponent):
         totalShots = expectedTeamShots(team)
     if team == None:
         totalShots = 1
-    shots = pd.read_json(cs.shotDir + str(player) + '.json')
+
+    with open(cs.shotDir + str(player) + '.json', ) as data_file:
+        data = json.load(data_file)
+        shot_data = []
+        for shot in data:
+            mon = months[shot[1][0:3]]
+            day = int(shot[1][4:6])
+            year = int(shot[1][8:13])
+            current_date = datetime.datetime(year,mon,day)
+            if current_date < new_date:
+                shot_data.append(shot)
+
+    shots = pd.DataFrame(shot_data)
     shots.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
 
     oldRows = float(len(shots.index))
@@ -204,6 +215,7 @@ def expectedShotsTaken(player,opponent):
 
 
 
+
 def leagueAverage(year):
     avgShotDistance = []
     avgShotClock = []
@@ -230,47 +242,20 @@ def leagueAverage(year):
     print defenderDistance
 
 
-def expectedFouls(player,opponent):
-    #Find the number of fouls he draws per game
-    with open(cs.gamelogDir + str(player) + '.json') as dataFile:
-        dataFile = json.load(dataFile)
-        fouls = []
-        for game in dataFile:
-            fouls.append(game[17])
-        avgPlayerFTs = float(sum(fouls))/float(len(fouls))
-
-
-    totalFTs = 0
-    for i in os.listdir(cs.teamDir):
-        if not i.startswith('.') and not i.endswith('_game.json'):
-            with open (cs.teamDir + i) as data_file:
-                data = json.load(data_file)
-                totalFTs += data[0][16]
-
-    avgFouls = totalFTs/30
-
-    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
-        data = json.load(data_file)
-        opponentTeamFTs = data[0][16]
-
-
-    #Percent that defense lowers total shots
-    defenseFoulPercentDifference =  (opponentTeamFTs - avgFouls) / opponentTeamFTs
-
-    #Expected number of shots that a player will take against a given opponent
-    avgPlayerFTs = avgPlayerFTs + (avgPlayerFTs * defenseFoulPercentDifference)
-
-    return avgPlayerFTs
-
-def expectedFouls(player,opponent):
+def expectedFouls(player,opponent, new_date = now):
     #Find the number of fouls he draws per game
     with open(cs.gamelogDir + str(player) + '.json') as dataFile:
         dataFile = json.load(dataFile)
         fouls = []
         madeShots = []
         for game in dataFile:
-            fouls.append(game[17])
-            madeShots.append(game[16])
+            mon = int(game[6][5:7])
+            day = int(game[6][8:10])
+            year = int(game[6][0:4])
+            current_date = datetime.datetime(year,mon,day)
+            if new_date > current_date:
+                fouls.append(game[17])
+                madeShots.append(game[16])
         avgPlayerFTs = float(sum(fouls))/float(len(fouls))
         if float(sum(madeShots)) > 0:
             fgPCT = float(sum(madeShots)/float(sum(fouls)))
@@ -282,13 +267,16 @@ def expectedFouls(player,opponent):
         if not i.startswith('.') and not i.endswith('_game.json'):
             with open (cs.teamDir + i) as data_file:
                 data = json.load(data_file)
-                totalFTs += data[0][14]
+                totalFTs += data[0][17]
 
     avgFouls = totalFTs/30
 
+    #16 = Made Fouls
+    #17 = Attempted Fouls
+
     with open(cs.teamDir + opponent + '_opponent.json') as data_file:
         data = json.load(data_file)
-        opponentTeamFTs = data[0][14]
+        opponentTeamFTs = data[0][17]
 
 
     #Percent that defense lowers total shots
@@ -297,23 +285,28 @@ def expectedFouls(player,opponent):
     #Expected number of shots that a player will take against a given opponent
     avgPlayerFTs = avgPlayerFTs + (avgPlayerFTs * defenseFoulPercentDifference)
 
-
     return fgPCT*avgPlayerFTs
 
-
-def expectedPoints(player,opposingTeam):
-    shotPCT = expectedShotPercentage(player, opposingTeam)
-    expectedShots = expectedShotsTaken(player, opposingTeam)
-    fouls = expectedFouls(player,opposingTeam)
-    #TODO: This should be a seperate function
+def expectedPoints(player,opposingTeam, new_date = now):
+    shotPCT = expectedShotPercentage(player, opposingTeam, new_date)
+    expectedShots = expectedShotsTaken(player, opposingTeam, new_date)
+    fouls = expectedFouls(player,opposingTeam, new_date)
 
     with open(cs.shotDir + str(player) + '.json') as data_file:
         shots = json.load(data_file)
         twos = 0
+        shot_data = []
         for shot in shots:
-            if shot[12] == 2:
-                twos += 1
-        twoPercent = float(twos)/float(len(shots))
+            mon = months[shot[1][0:3]]
+            day = int(shot[1][4:6])
+            year = int(shot[1][8:13])
+            current_date = datetime.datetime(year,mon,day)
+            if current_date < new_date:
+                shot_data.append(shot)
+                if shot[12] == 2:
+                    twos += 1
+
+        twoPercent = float(twos)/float(len(shot_data))
         threePercent = 1.0 - twoPercent
 
 
@@ -322,178 +315,72 @@ def expectedPoints(player,opposingTeam):
 
     return [points, threePointers]
 
-#shot_data.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
-
-
-
 leagueShotClock2014 = 12.4624577172
 leagueDefenderDistance2014 = 13.6198586128
 leagueShotDistance2014 = 4.13361607305
 
-
-
-########################REST OF DK POINTS####################################
-def expectedBlocks(player,opponent):
-    #Find the number of blocks he averages per game
+def statChanger(player,opponent, stat, new_date = now):
     with open(cs.gamelogDir + str(player) + '.json') as dataFile:
         dataFile = json.load(dataFile)
-        blocks = []
-        for game in dataFile:
-            blocks.append(game[24])
-        avgPlayerBlocks = float(sum(blocks))/float(len(blocks))
+    stats = []
+    for game in dataFile:
+        mon = int(game[6][5:7])
+        day = int(game[6][8:10])
+        year = int(game[6][0:4])
 
-    totalBlocks = 0
+        current_date = datetime.datetime(year,mon,day)
+
+        if current_date < new_date:
+            stats.append(game[number_dict1[stat]])
+    avgPlayerStat = float(sum(stats))/float(len(stats))
+
+    totalStats = 0
     for i in os.listdir(cs.teamDir):
         if not i.startswith('.') and not i.endswith('_game.json'):
             with open (cs.teamDir + i) as data_file:
                 data = json.load(data_file)
-                totalBlocks += data[0][22]
+                totalStats += data[0][number_dict2[stat]]
 
-    avgBlocks = totalBlocks/30
-
-    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
-        data = json.load(data_file)
-        opponentTeamBlocks = data[0][22]
-
-    #Percent that defense lowers total shots
-    defenseBlockPercentDifference =  (opponentTeamBlocks - avgBlocks) / opponentTeamBlocks
-
-    #Expected number of shots that a player will take against a given opponent
-    avgPlayerBlocks = avgPlayerBlocks + (avgPlayerBlocks * defenseBlockPercentDifference)
-
-    return avgPlayerBlocks
-
-
-def expectedSteals(player,opponent):
-    #Find the number of blocks he averages per game
-    with open(cs.gamelogDir + str(player) + '.json') as dataFile:
-        dataFile = json.load(dataFile)
-        steals = []
-        for game in dataFile:
-            steals.append(game[23])
-        avgPlayerSteals = float(sum(steals))/float(len(steals))
-
-    totalSteals = 0
-    for i in os.listdir(cs.teamDir):
-        if not i.startswith('.') and not i.endswith('_game.json'):
-            with open (cs.teamDir + i) as data_file:
-                data = json.load(data_file)
-                totalSteals += data[0][21]
-
-    avgSteals = totalSteals/30
+    avgStats = totalStats/30
 
     with open(cs.teamDir + opponent + '_opponent.json') as data_file:
         data = json.load(data_file)
-        opponentTeamSteals = data[0][21]
+        opponentTeamStats = data[0][number_dict2[stat]]
 
-    #Percent that defense lowers total shots
-    defenseStealPercentDifference =  (opponentTeamSteals - avgSteals) / opponentTeamSteals
+    defenseStatPercentDifference =  (opponentTeamStats - avgStats) / opponentTeamStats
 
-    #Expected number of shots that a player will take against a given opponent
-    avgPlayerSteals = avgPlayerSteals + (avgPlayerSteals * defenseStealPercentDifference)
+    avgPlayerStats = avgPlayerStat + (avgPlayerStat * defenseStatPercentDifference)
 
-    return avgPlayerSteals
-
-def expectedAssists1(player,opponent):
-    #Find the number of blocks he averages per game
-    with open(cs.gamelogDir + str(player) + '.json') as dataFile:
-        dataFile = json.load(dataFile)
-        assists = []
-        for game in dataFile:
-            assists.append(game[22])
-        avgPlayerAssists = float(sum(assists))/float(len(assists))
-
-    totalAssists = 0
-    for i in os.listdir(cs.teamDir):
-        if not i.startswith('.') and not i.endswith('_game.json'):
-            with open (cs.teamDir + i) as data_file:
-                data = json.load(data_file)
-                totalAssists += data[0][19]
-
-    avgAssists = totalAssists/30
-
-    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
-        data = json.load(data_file)
-        opponentTeamAssists = data[0][19]
-
-    #Percent that defense lowers total shots
-    defenseAssistPercentDifference =  (opponentTeamAssists - avgAssists) / opponentTeamAssists
-
-    #Expected number of shots that a player will take against a given opponent
-    avgPlayerAssists = avgPlayerAssists + (avgPlayerAssists * defenseAssistPercentDifference)
-
-    return avgPlayerAssists
-
-def expectedTurnovers(player, opponent):
-    #Find the number of blocks he averages per game
-    with open(cs.gamelogDir + str(player) + '.json') as dataFile:
-        dataFile = json.load(dataFile)
-        turnovers = []
-        for game in dataFile:
-            turnovers.append(game[25])
-        avgPlayerTurnovers = float(sum(turnovers))/float(len(turnovers))
-
-    totalTurnovers = 0
-    for i in os.listdir(cs.teamDir):
-        if not i.startswith('.') and not i.endswith('_game.json'):
-            with open (cs.teamDir + i) as data_file:
-                data = json.load(data_file)
-                totalTurnovers += data[0][20]
-
-    avgTurnovers = totalTurnovers/30
-
-    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
-        data = json.load(data_file)
-        opponentTeamTurnovers = data[0][20]
-
-    #Percent that defense lowers total shots
-    defenseTurnoverPercentDifference =  (opponentTeamTurnovers - avgTurnovers) / opponentTeamTurnovers
-
-    #Expected number of shots that a player will take against a given opponent
-    avgPlayerTurnovers = avgPlayerTurnovers + (avgPlayerTurnovers * defenseTurnoverPercentDifference)
-
-    return avgPlayerTurnovers
+    return avgPlayerStats
 
 
-def expectedRebounds(player, opponent):
-    #Find the number of blocks he averages per game
-    with open(cs.gamelogDir + str(player) + '.json') as dataFile:
-        dataFile = json.load(dataFile)
-        rebounds = []
-        for game in dataFile:
-            rebounds.append(game[21])
-        avgPlayerRebounds = float(sum(rebounds))/float(len(rebounds))
+def expectedSteals(player, opponent, new_date = now):
+    return statChanger(player, opponent, 'steal', new_date)
 
-    totalRebounds = 0
-    for i in os.listdir(cs.teamDir):
-        if not i.startswith('.') and not i.endswith('_game.json'):
-            with open (cs.teamDir + i) as data_file:
-                data = json.load(data_file)
-                totalRebounds += data[0][18]
+def expectedBlocks(player, opponent, new_date = now):
+    return statChanger(player, opponent, 'block', new_date)
 
-    avgRebounds = totalRebounds/30
+def expectedAssists1(player, opponent, new_date = now):
+    return statChanger(player, opponent, 'assist', new_date)
 
-    with open(cs.teamDir + opponent + '_opponent.json') as data_file:
-        data = json.load(data_file)
-        opponentTeamRebounds = data[0][18]
+def expectedTurnovers(player, opponent, new_date = now):
+    return statChanger(player, opponent, 'turnover', new_date)
 
-    #Percent that defense lowers total shots
-    defenseReboundPercentDifference =  (opponentTeamRebounds - avgRebounds) / opponentTeamRebounds
+def expectedRebounds(player, opponent, new_date = now):
+    return statChanger(player, opponent, 'rebound', new_date)
 
-    #Expected number of shots that a player will take against a given opponent
-    avgPlayerRebounds = avgPlayerRebounds + (avgPlayerRebounds * defenseReboundPercentDifference)
 
-    return avgPlayerRebounds
+#TODO: START HERE ON 1/29
 
-def DKPoints(player, opponent):
-    pointStuff = expectedPoints(player, opponent)
+def DKPoints(player, opponent, new_date = now):
+    pointStuff = expectedPoints(player, opponent, new_date)
     points = pointStuff[0]
     threePointers = pointStuff[1]
-    assists = expectedAssists1(player, opponent)
-    rebounds = expectedRebounds(player, opponent)
-    blocks = expectedBlocks(player, opponent)
-    steals = expectedSteals(player, opponent)
-    turnover = expectedTurnovers(player, opponent)
+    assists = expectedAssists1(player, opponent, new_date)
+    rebounds = expectedRebounds(player, opponent, new_date)
+    blocks = expectedBlocks(player, opponent, new_date)
+    steals = expectedSteals(player, opponent, new_date)
+    turnover = expectedTurnovers(player, opponent, new_date)
 
     totalPoints = points + (0.5 * threePointers) + (1.5 * assists) + (1.25 * rebounds) + (2 * blocks) + (2 * steals) - (0.5 * turnover)
 
