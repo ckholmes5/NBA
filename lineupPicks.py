@@ -3,7 +3,6 @@
 
 from lxml import html
 import requests
-import operator
 import time
 import json
 import os
@@ -11,19 +10,23 @@ import pandas as pd
 import statsmodels.formula.api as smf
 import constants as cs
 import datetime
+
 now = datetime.datetime.now()
+
 months = {'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5, 'JUN': 6, 'DEC': 12, 'NOV':11, 'OCT':10}
 
 number_dict1 = {'block': 24, 'steal': 23, 'assist': 22, 'turnover': 25, 'rebound': 21}
 number_dict2 = {'block': 22, 'steal': 21, 'assist': 19, 'turnover': 20, 'rebound': 18}
 
+renameDict = {'kelly_oubre_jr.' : 'kelly_oubre', 'r.j._hunter': 'rj_hunter', 'chris_johnson': 'christapher_johnson', 'raul_neto': 'raulzinho_neto', 'patty_mills': 'patrick_mills', "amar'e_stoudemire": 'amare_stoudemire', 'manu_ginobili': 'emanuel_ginobili','nene_hilario': 'nene', 'danny_green': 'daniel_green','t.j._mcconnell': 'tj_mcconnell', 'c.j._watson': 'cj_watson', 'k.j._mcdaniels': 'kj_mcdaniels', 'c.j._wilcox': 'cj_wilcox', 'd.j._augustin': 'dj_augustin', 'luc_richard_mbah_a_moute': 'luc_mbah_a_moute', 'marcus_thornton': 'marcus_t_thornton','j.j._redick': 'jj_redick', 'j.j._hickson': 'jj_hickson', 'p.j._hairston': 'pj_hairston', 'mo_williams': 'maurice_williams', 't.j._warren': 'tj_warren', 'tristan_thompson': 'tristan_t_thompson', 'p.j._tucker': 'pj_tucker', 'c.j._miles': 'cj_miles', 'j.r._smith': "jr_smith", 'ryan_anderson': 'ryan_j_anderson', 'c.j._mccollum': 'cj_mccollum', 'j.j._barea': 'jose_barea', 'lou_williams': 'louis_williams', "d'angelo_russell": 'dangelo_russell', 'larry_nance_jr.': 'larry_nance', 'o.j._mayo': 'oj_mayo', "kyle_o'quinn": 'kyle_oquinn', "e'twaun_moore" : 'etwaun_moore', 'louis_amundson': 'lou_amundson', "tim_hardaway_jr.": 'timothy_hardaway', "johnny_o'bryant": 'johnny_obryant'}
+teamDick = {'nor': 'NOP', 'pho': 'PHX'}
 #TODO: ##################################### ALL MY TERRIBLE CODE #############################################
 def expectedBetas(playerID, opposingTeam, new_date = now):
     roster = open(cs.rosterDir + opposingTeam + '.json', )
     roster = json.load(roster)
-
     with open(cs.shotDir + str(playerID) + '.json') as data_file:
         shot_data = json.load(data_file)
+
 
     #Every shot the player made
     game_data = []
@@ -105,7 +108,10 @@ def expectedShotPercentage(player,team, new_date = now):
 
 
     pd_shot_data = pd.DataFrame(shot_data)
-    pd_shot_data.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
+    try:
+        pd_shot_data.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
+    except ValueError:
+        return 1
 
     lm = smf.ols(formula='FGM ~ CLOSE_DEF_DIST + SHOT_DIST + SHOT_CLOCK', data=pd_shot_data).fit()
 
@@ -153,6 +159,8 @@ def teamFinder(player):
 
                 for roster in data:
                     if roster[0] == player:
+                        if roster[9] == '':
+                            return None
                         team = roster[9]
                         id = roster[0]
                         return team
@@ -161,7 +169,6 @@ def expectedShotsTaken(player, opponent, new_date = now):
 
     #First find out which team he plays for by going through the rosters
     team = teamFinder(player)
-
     #How many total shots the team he plays for takes on average
     if team != None:
         totalShots = expectedTeamShots(team)
@@ -180,8 +187,10 @@ def expectedShotsTaken(player, opponent, new_date = now):
                 shot_data.append(shot)
 
     shots = pd.DataFrame(shot_data)
-    shots.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
-
+    try:
+        shots.columns = ["GAME_ID","MATCHUP","LOCATION","W","FINAL_MARGIN","SHOT_NUMBER","PERIOD","GAME_CLOCK","SHOT_CLOCK","DRIBBLES","TOUCH_TIME","SHOT_DIST","PTS_TYPE","SHOT_RESULT","CLOSEST_DEFENDER","CLOSEST_DEFENDER_PLAYER_ID","CLOSE_DEF_DIST","FGM","PTS"]
+    except ValueError:
+        return 0
     oldRows = float(len(shots.index))
     shots = shots.groupby('GAME_ID').median()
     rows = float(len(shots.index))
@@ -256,7 +265,10 @@ def expectedFouls(player,opponent, new_date = now):
             if new_date > current_date:
                 fouls.append(game[17])
                 madeShots.append(game[16])
-        avgPlayerFTs = float(sum(fouls))/float(len(fouls))
+        if len(fouls) > 0:
+            avgPlayerFTs = float(sum(fouls))/float(len(fouls))
+        else:
+            avgPlayerFTs = 0
         if float(sum(madeShots)) > 0:
             fgPCT = float(sum(madeShots)/float(sum(fouls)))
         else:
@@ -305,8 +317,10 @@ def expectedPoints(player,opposingTeam, new_date = now):
                 shot_data.append(shot)
                 if shot[12] == 2:
                     twos += 1
-
-        twoPercent = float(twos)/float(len(shot_data))
+        if len(shot_data) > 0:
+            twoPercent = float(twos)/float(len(shot_data))
+        else:
+            twoPercent = 0.65
         threePercent = 1.0 - twoPercent
 
 
@@ -332,7 +346,10 @@ def statChanger(player,opponent, stat, new_date = now):
 
         if current_date < new_date:
             stats.append(game[number_dict1[stat]])
-    avgPlayerStat = float(sum(stats))/float(len(stats))
+    if len(stats) == 0:
+        avgPlayerStat = 0
+    else:
+        avgPlayerStat = float(sum(stats))/float(len(stats))
 
     totalStats = 0
     for i in os.listdir(cs.teamDir):
@@ -369,8 +386,6 @@ def expectedTurnovers(player, opponent, new_date = now):
 def expectedRebounds(player, opponent, new_date = now):
     return statChanger(player, opponent, 'rebound', new_date)
 
-
-#TODO: START HERE ON 1/29
 
 def DKPoints(player, opponent, new_date = now):
     pointStuff = expectedPoints(player, opponent, new_date)
@@ -420,73 +435,71 @@ class ApiPull:
               tmp = tmp.replace('${' + k + '}', v)
         return tmp
 
+#This has been commented out
+'''
 class playersPull:
-    players_url = 'http://stats.nba.com/stats/commonallplayers?IsOnlyCurrentSeason=0&LeagueID=00&Season=${season}'
+    requests.get('http://stats.nba.com/stats/commonallplayers?IsOnlyCurrentSeason=1&LeagueID=00&Season=${season}',headers={'User-Agent':"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.82 Safari/537.36"})
+
+    players_url = 'http://stats.nba.com/stats/commonallplayers?IsOnlyCurrentSeason=1&LeagueID=00&Season=${season}'
     apiPull = None
 
     def __init__(self, player_macros=None):
          if player_macros is None:
-              player_macros = {'season': '2015-16'}
+              player_macros = cs.player_macro
          self.apiPull = ApiPull(self.players_url, player_macros)
 
     def get(self):
-         return self.apiPull.get()
+         return requests.get('http://stats.nba.com/stats/commonallplayers?IsOnlyCurrentSeason=1&LeagueID=00&Season=${season}',headers={'User-Agent':"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.82 Safari/537.36"})
+'''
 
 
-#TODO: Open the directory of players
-
-def statArraySetup(urlNumber):
+def statArraySetup(urlNumber, new_date = now):
     shots_response = requests.get('https://www.draftkings.com/lineup/getavailableplayers?draftGroupId=' + str(urlNumber))
-    shots_response.raise_for_status() # raise exception if invalid response
+    shots_response.raise_for_status()
     shots = shots_response.json()['playerList']
 
-    allPlayers = playersPull().get()
-    roster = {}
-    todaysPlayers = {}
-    print allPlayers
-    print shots
-    playerArray = "Date;GID;Pos;Name;Starter;DK Pts;DK Salary;Team;H/A;Oppt;Team Score;Oppt Score;Minutes;Stat line\n"
+    with open(cs.rosterDir + 'All.json') as data_file:
+        allPlayers = json.load(data_file)
+        predictedPoints = {}
 
-    for player in shots:
-        statArray = ""
+        playerArray = "Date;GID;Pos;Name;Starter;DK Pts;DK Salary;Team;H/A;Oppt;Team Score;Oppt Score;Minutes;Stat line\n"
 
-        name = player['fnu'] + ' ' + player['lnu']
-        name = name.replace(' ', '_').lower()
+        for player in shots:
+            statArray = ""
 
-        renameDict = {'k.j._mcdaniels': 'kj_mcdaniels', 'c.j._wilcox': 'cj_wilcox', 'd.j._augustin': 'dj_augustin', 'luc_richard_mbah_a_moute': 'luc_mbah_a_moute', 'marcus_thornton': 'marcus_t_thornton','j.j._redick': 'jj_redick', 'j.j._hickson': 'jj_hickson', 'p.j._hairston': 'pj_hairston', 'mo_williams': 'maurice_williams', 't.j._warren': 'tj_warren', 'tristan_thompson': 'tristan_t_thompson', 'p.j._tucker': 'pj_tucker', 'c.j._miles': 'cj_miles', 'j.r._smith': "jr_smith", 'ryan_anderson': 'ryan_j_anderson', 'c.j._mccollum': 'cj_mccollum', 'j.j._barea': 'jose_barea', 'lou_williams': 'louis_williams', "d'angelo_russell": 'dangelo_russell', 'larry_nance_jr.': 'larry_nance', 'o.j._mayo': 'oj_mayo', "kyle_o'quinn": 'kyle_oquinn', "e'twaun_moore" : 'etwaun_moore', 'louis_amundson': 'lou_amundson', "tim_hardaway_jr.": 'timothy_hardaway', "johnny_o'bryant": 'johnny_obryant'}
+            name = player['fnu'] + ' ' + player['lnu']
+            name = name.replace(' ', '_').lower()
 
-        if name in renameDict:
-            name = renameDict[name]
+            if name in renameDict:
+                name = renameDict[name]
 
-        print name
-        for i in allPlayers:
-            if i[5] == name:
-                id = i[0]
+            teamDict = {1: 'ATL', 2: 'BOS', 3: 'NOP', 4: 'DEN', 5: 'CLE', 6: 'DAL', 7: 'CHI', 8: 'DET', 9: 'GSW', 10: 'HOU', 11: 'IND', 12: 'LAC', 13: 'LAL', 14: 'MIA', 15: 'MIL', 16: 'MIN', 17: 'BKN', 18: 'NYK', 19: 'ORL', 20: 'PHI', 21: 'PHX', 22:'POR', 23: 'SAC', 24: 'SAS', 25: 'OKC', 26: 'UTA', 27: 'WAS', 28: 'TOR', 29: 'MEM', 5312: 'CHA'}
+            for i in allPlayers:
+                if i[5] == name:
+                    id = i[0]
+                    if player['i'] == "O":
+                        predictedPoints[name] = 0
+                        break
+                    dkPoints = DKPoints(id, str(teamDict[player['tid']]), new_date)
+                    predictedPoints[name] = dkPoints
 
-                if player['i'] == "O":
-                    todaysPlayers[name] = 0
-                    break
-                try:
-                    dkPoints = DKPoints(id, 'NYK')
-                    todaysPlayers[name] = dkPoints
-                except ValueError: #TODO: Only for 2014, this can be removed once we have 2015...right?
-                    todaysPlayers[name] = 'None'
+            statArray = statArray + time.strftime("%Y%m%d") + ';'
+            statArray = statArray + 'None' + ';' #'gameID'
+            statArray = statArray + str(player['pn']) + ';'
+            statArray = statArray + str(name) + ';'
+            statArray = statArray + 'None' + ';' #'Starter?
 
-        statArray = statArray + time.strftime("%Y%m%d") + ';'
-        statArray = statArray + 'None' + ';' #'gameID'
-        statArray = statArray + str(player['pn']) + ';'
-        statArray = statArray + str(name) + ';'
-        statArray = statArray + 'None' + ';' #'Starter?
-        statArray = statArray + str(todaysPlayers[name]) + ';' #TODO: Where the predictions will go!
-        statArray = statArray + str(player['s']) + ';'
-        statArray = statArray + 'None' + ';' #'Team'
-        statArray = statArray + 'None' + ';' #'Home?'
-        statArray = statArray + 'None' + ';' #'Opponent'
-        statArray = statArray + 'None' + ';' #'teamScore'
-        statArray = statArray + 'None' + ';' #'opponentScore'
-        statArray = statArray + 'None' + ';' #'minutes'
-        statArray = statArray + 'None' + ';' #'statLine'
-        playerArray = playerArray + statArray + "|||"
+            statArray = statArray + str(predictedPoints[name]) + ';'
+
+            statArray = statArray + str(player['s']) + ';'
+            statArray = statArray + 'None' + ';' #'Team'
+            statArray = statArray + 'None' + ';' #'Home?'
+            statArray = statArray + 'None' + ';' #'Opponent'
+            statArray = statArray + 'None' + ';' #'teamScore'
+            statArray = statArray + 'None' + ';' #'opponentScore'
+            statArray = statArray + 'None' + ';' #'minutes'
+            statArray = statArray + 'None' + ';' #'statLine'
+            playerArray = playerArray + statArray + "|||"
     return [playerArray]
 
 
@@ -540,14 +553,15 @@ class playerDayFromRotoWorld:
      def getValue(self):
          if self.dkpoints == 0:
              return -10000
-         return self.dkpoints * self.dkpoints * self.dkpoints / self.salary
+         return self.dkpoints / self.salary
 
      def __lt__(self, other):
          return self.getValue() > other.getValue()
-     def out(self):
-        print self.name + ' ' + self.salary + ' '
 
-class shotScrape:
+     def out(self):
+        print self.name, self.salary
+
+class shotScrapeRG:
     def __init__(self, days, mons, years, url=None, do_replacement=False):
         self.data=None
         self.days = days
@@ -560,22 +574,64 @@ class shotScrape:
             self.url = self.url.replace('${day}', self.days)
             self.url = self.url.replace('${year}', self.years)
 
-    def get(self, reset=False):
+    def getRG(self, predict = False, reset=False, new_date = now):
         if reset or self.data is None:
             page = requests.get(self.url)
             self.data = page.content
         t = html.fromstring(self.data)
-        #rawDayData = t.xpath('//table/pre/text()') #TODO: This is the toggle between draftkings and rotoguru
-    	rawDayData = statArraySetup(8529)
-
+        rawDayData = t.xpath('//table/pre/text()')
         players = []
-        for player in rawDayData[0].split('|||')[1:]:
-            print player
-            if player is '' :
-                continue
-            players.append(playerDayFromRotoWorld(player.split(';')))
+
+        with open(cs.rosterDir + 'All.json') as datafile:
+
+            allPlayers = json.load(datafile)
+
+
+            for player in rawDayData[0].split('\n')[1:]:
+                if player is '' :
+                    continue
+                fName = player.split(';')[3].split(', ')[1].lower()
+                lName = player.split(';')[3].split(', ')[0].lower()
+                name = fName + '_' + lName
+                team = player.split(';')[7]
+
+                if name in renameDict:
+                    name = renameDict[name]
+
+                if team in teamDick:
+                    team = teamDick[team]
+
+                for i in allPlayers:
+                    if i[5] == name:
+                        id = i[0]
+                        dkPoints = DKPoints(id, team, new_date)
+                        predictedPoints = dkPoints
+                scrote = player.split(';')
+                if predict == True:
+                    scrote[5] = str(predictedPoints)
+
+                players.append(playerDayFromRotoWorld(scrote))
         return players
 
+
+class shotScrapeDK:
+    def __init__(self, id):
+        self.id = id
+
+    def getDK(self, new_date = now, reset=False):
+        rawDayData = statArraySetup(self.id, new_date)
+        players = []
+        for player in rawDayData[0].split('|||')[1:]:
+            if player is '':
+                continue
+            players.append(playerDayFromRotoWorld(player.split(';')))
+
+        return players
+
+
+
+
+#TODO: 2/4: You just finished the above class, and it looks like you can now make real predictions based on the team they're going against and over a certain date range. The next step is to write a function that checks the predicted team vs the ideal team. It should output some ratio of predicted points/ideal points and then fuck with that.
 class dkTeam:
     team_salary=50000
     def __init__(self):
@@ -886,26 +942,64 @@ def doThing(y):
         t1=time.time()
         n.findBest()
         t2=time.time()
-        print n.getPerms()
-        print len(n.improvements)
-        print n.improvements
-        print n.getStats()
+        print n.getPerms(), 'NPERMS'
+        print len(n.improvements), 'LENNNIMPROVEMENTS'
+        print n.improvements, 'NIMPROVEMENTS'
+        print n.getStats(), 'GETSTATS'
         if len(n.bestTeam.players) is not 0:
-            print [x.name for x in n.bestTeam.players]
+            print [x.name for x in n.bestTeam.players], 'BESTSTATS'
+        return n.getStats()
+
+        #Uncomment the following code if you want the whole shebang, not just the first lineup's score (which tends to be the highest, #TODO: but you haven't tested as of 2/11
+        '''
+        print n.getPerms(), 'NPERMS'
+        print len(n.improvements), 'LENNNIMPROVEMENTS'
+        print n.improvements, 'NIMPROVEMENTS'
+        print n.getStats(), 'GETSTATS'
+        if len(n.bestTeam.players) is not 0:
+            print [x.name for x in n.bestTeam.players], 'BESTSTATS'
+        '''
 
 
 
 
 
-def __main__():
-    yesterday=shotScrape('0','0','0', None, True)
-    players=yesterday.get()
+def __mainRG__(day, month, year, predict = True):
+    yesterday=shotScrapeRG(str(day),str(month), str(year), None, True)
+    players=yesterday.getRG(predict)
     players.sort()
-    doThing(players)
+    team = doThing(players)
+    return team[0]
 
-print __main__()
-#Scrape all Rotoguru
+def __mainDK__():
+    #TODO: Pull this number in dynamically from the draftkings lineup page
+    yesterday = shotScrapeDK(8276)
+    players = yesterday.getDK()
+    players.sort()
+    team = doThing(players)
+    return team[0]
+
+def lineupComparison(day, month, year, today = now):
+
+    ratios = []
+    current_date = datetime.datetime(year,month,day)
+
+    delta = datetime.timedelta(days=1)
+
+    while current_date < today:
+        predictTeamRG = __mainRG__(current_date.day, current_date.month, current_date.year, True)
+        perfectTeamRG = __mainRG__(current_date.day, current_date.month, current_date.year, False)
+
+        ratios.append(predictTeamRG/perfectTeamRG)
+
+        current_date += delta
+        print ratios
+    return ratios
 
 
+print lineupComparison(8, 2, 2016)
+
+
+#TODO: 2/11: You adjusted the lineup picks function to points/salary instead of points^3/salary. This is because the lineup picks functions breaks because there are too many options to choose from. It'd be great if it didn't break.
 
 

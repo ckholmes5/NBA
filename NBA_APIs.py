@@ -153,6 +153,9 @@ for player in rosters:
     with open(cs.rosterDir + player[9] + '.json', 'a') as outfile:
         json.dump(player, outfile)
 
+with open(cs.rosterDir + 'all.json', 'a') as outfile:
+    json.dump(rosters, outfile)
+
 
 
 ####### DK POINTS SETUP #######
@@ -207,6 +210,29 @@ for i in os.listdir(cs.gamelogDir):
 "PTS", 26
 "PLUS_MINUS", 27
 "VIDEO_AVAILABLE", 28
+
+with open(cs.rosterDir + 'all.json') as data_file:
+    players = json.load(data_file)
+    playerIDs = []
+    for i in players:
+        playerIDs.append(i[0])
+
+for player in playerIDs:
+    if not os.path.exists(cs.defenseDir + str(player) + '.json'):
+        playerFile = open(cs.defenseDir + str(player) + '.json', 'a')
+        playerFile.write('[]')
+        playerFile.close()
+
+    if not os.path.exists(cs.shotDir + str(player) + '.json'):
+        playerFile = open(cs.shotDir + str(player) + '.json', 'a')
+        playerFile.write('[]')
+        playerFile.close()
+
+    if not os.path.exists(cs.reboundDir + str(player) + '.json'):
+        playerFile = open(cs.reboundDir + str(player) + '.json', 'a')
+        playerFile.write('[]')
+        playerFile.close()
+
 '''
 
 

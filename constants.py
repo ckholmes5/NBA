@@ -1,3 +1,5 @@
+#To change the year, change the baseDir and the player_macro
+
 baseDir = '/Users/christianholmes/NBA/players/2015'
 reboundDir = baseDir + '/Rebounds/'
 shotDir = baseDir + '/Shots/'
@@ -9,3 +11,5 @@ playersDir = baseDir + '/Players/'
 defenseDir = baseDir + '/Defense/'
 dkPointsDir = baseDir + '/dkPoints/'
 priceDir = baseDir + '/Prices/'
+
+player_macro = {'season': '2015-16'}
