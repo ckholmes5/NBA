@@ -20,7 +20,7 @@ number_dict2 = {'block': 22, 'steal': 21, 'assist': 19, 'turnover': 20, 'rebound
 
 renameDict = {'kelly_oubre_jr.' : 'kelly_oubre', 'r.j._hunter': 'rj_hunter', 'chris_johnson': 'christapher_johnson', 'raul_neto': 'raulzinho_neto', 'patty_mills': 'patrick_mills', "amar'e_stoudemire": 'amare_stoudemire', 'manu_ginobili': 'emanuel_ginobili','nene_hilario': 'nene', 'danny_green': 'daniel_green','t.j._mcconnell': 'tj_mcconnell', 'c.j._watson': 'cj_watson', 'k.j._mcdaniels': 'kj_mcdaniels', 'c.j._wilcox': 'cj_wilcox', 'd.j._augustin': 'dj_augustin', 'luc_richard_mbah_a_moute': 'luc_mbah_a_moute', 'marcus_thornton': 'marcus_t_thornton','j.j._redick': 'jj_redick', 'j.j._hickson': 'jj_hickson', 'p.j._hairston': 'pj_hairston', 'mo_williams': 'maurice_williams', 't.j._warren': 'tj_warren', 'tristan_thompson': 'tristan_t_thompson', 'p.j._tucker': 'pj_tucker', 'c.j._miles': 'cj_miles', 'j.r._smith': "jr_smith", 'ryan_anderson': 'ryan_j_anderson', 'c.j._mccollum': 'cj_mccollum', 'j.j._barea': 'jose_barea', 'lou_williams': 'louis_williams', "d'angelo_russell": 'dangelo_russell', 'larry_nance_jr.': 'larry_nance', 'o.j._mayo': 'oj_mayo', "kyle_o'quinn": 'kyle_oquinn', "e'twaun_moore" : 'etwaun_moore', 'louis_amundson': 'lou_amundson', "tim_hardaway_jr.": 'timothy_hardaway', "johnny_o'bryant": 'johnny_obryant'}
 teamDick = {'nor': 'NOP', 'pho': 'PHX'}
-#TODO: ##################################### ALL MY TERRIBLE CODE #############################################
+
 def expectedBetas(playerID, opposingTeam, new_date = now):
     roster = open(cs.rosterDir + opposingTeam + '.json', )
     roster = json.load(roster)
@@ -504,62 +504,61 @@ def statArraySetup(urlNumber, new_date = now):
 
 
 
-
-#TODO ########################################### THE END OF MY TERRIBLE CODE ################################################
-
 class playerDayFromRotoWorld:
 
-     def __init__(self, statArray):
-         self.date = statArray[0]
-         self.gid = statArray[1]
-         self.pos = statArray[2]
-         self.name = statArray[3]
-         self.starter = len(statArray[4]) == 0
-         if statArray[5] == 'None':
-             self.dkpoints = 0
-         else:
-             self.dkpoints = float(statArray[5])
-         if statArray[6] == 'N/A':
-             self.salary = 100000
-         else:
-             self.salary = int(statArray[6].strip('$').replace(',',''))
-         self.team = statArray[7]
-         self.home = statArray[8] == 'H'
-         self.opponent = statArray[9]
-         self.team_score = statArray[10]
-         self.opponent_score = statArray[11]
-         self.minutes = statArray[12]
-         statLine = statArray[13].split(' ')
-         for stat in statLine:
-             if stat.find('pt') > -1:
-                  self.points = int(stat.strip('pt'))
-             if stat.find('rb') > -1:
-                  self.rebounds = int(stat.strip('rb'))
-             if stat.find('as') > -1:
-                  self.assists = int(stat.strip('as'))
-             if stat.find('st') > -1:
-                  self.steals = int(stat.strip('st'))
-             if stat.find('to') > -1:
-                  self.turnovers = int(stat.strip('to'))
-             if stat.find('trey') > -1:
-                  self.threes = int(stat.strip('trey'))
-             if stat.find('fg') > -1:
-                  self.field_goals_attempted = int(stat.strip('fg').split('-')[1])
-                  self.field_goals_made = int(stat.strip('fg').split('-')[0])
-             if stat.find('ft') > -1:
-                  self.free_throws_attempted = int(stat.strip('ft').split('-')[1])
-                  self.free_throws_made = int(stat.strip('ft').split('-')[0])
+    def __init__(self, statArray):
+        self.date = statArray[0]
+        self.gid = statArray[1]
+        self.pos = statArray[2]
+        self.name = statArray[3]
+        self.starter = len(statArray[4]) == 0
+        if statArray[5] == 'None':
+            self.dkpoints = 0
+        else:
+            self.dkpoints = float(statArray[5])
+        if statArray[6] == 'N/A':
+            self.salary = 100000
+        else:
+            self.salary = int(statArray[6].strip('$').replace(',',''))
+        self.team = statArray[7]
+        self.home = statArray[8] == 'H'
+        self.opponent = statArray[9]
+        self.team_score = statArray[10]
+        self.opponent_score = statArray[11]
+        self.minutes = statArray[12]
+        statLine = statArray[13].split(' ')
+        for stat in statLine:
+            if stat.find('pt') > -1:
+                self.points = int(stat.strip('pt'))
+            if stat.find('rb') > -1:
+                self.rebounds = int(stat.strip('rb'))
+            if stat.find('as') > -1:
+                self.assists = int(stat.strip('as'))
+            if stat.find('st') > -1:
+                self.steals = int(stat.strip('st'))
+            if stat.find('to') > -1:
+                self.turnovers = int(stat.strip('to'))
+            if stat.find('trey') > -1:
+                self.threes = int(stat.strip('trey'))
+            if stat.find('fg') > -1:
+                self.field_goals_attempted = int(stat.strip('fg').split('-')[1])
+                self.field_goals_made = int(stat.strip('fg').split('-')[0])
+            if stat.find('ft') > -1:
+                self.free_throws_attempted = int(stat.strip('ft').split('-')[1])
+                self.free_throws_made = int(stat.strip('ft').split('-')[0])
 
-     def getValue(self):
-         if self.dkpoints == 0:
-             return -10000
-         return self.dkpoints / self.salary
+    def getValue(self):
+        if self.dkpoints == 0:
+            return -10000
+        return self.dkpoints / self.salary
 
-     def __lt__(self, other):
-         return self.getValue() > other.getValue()
+    def __lt__(self, other):
+        return self.getValue() > other.getValue()
 
-     def out(self):
-        print self.name, self.salary
+    def out(self):
+        print self.name
+
+
 
 class shotScrapeRG:
     def __init__(self, days, mons, years, url=None, do_replacement=False):
@@ -606,12 +605,35 @@ class shotScrapeRG:
                         id = i[0]
                         dkPoints = DKPoints(id, team, new_date)
                         predictedPoints = dkPoints
+
                 scrote = player.split(';')
                 if predict == True:
                     scrote[5] = str(predictedPoints)
 
                 players.append(playerDayFromRotoWorld(scrote))
         return players
+
+    def getRGdata(self, predict = False, reset=False, new_date = now):
+        if reset or self.data is None:
+            page = requests.get(self.url)
+            self.data = page.content
+        t = html.fromstring(self.data)
+        rawDayData = t.xpath('//table/pre/text()')
+        players = []
+
+        with open(cs.rosterDir + 'All.json') as datafile:
+
+            allPlayers = json.load(datafile)
+
+
+            for player in rawDayData[0].split('\n')[1:]:
+                if player is '' :
+                    continue
+                fName = player.split(';')[3].split(', ')[1].lower()
+                lName = player.split(';')[3].split(', ')[0].lower()
+                name = fName + '_' + lName
+                team = player.split(';')[7]
+        return rawDayData
 
 
 class shotScrapeDK:
@@ -933,8 +955,6 @@ class SetOfPlayers:
                     team.removeG()
                 team.removeSG()
 
-
-
 def doThing(y):
     ys=[y[x:x+20] for x in range(10)]
     ns=[SetOfPlayers(x) for x in ys]
@@ -948,7 +968,7 @@ def doThing(y):
         print n.getStats(), 'GETSTATS'
         if len(n.bestTeam.players) is not 0:
             print [x.name for x in n.bestTeam.players], 'BESTSTATS'
-        return n.getStats()
+        return [n.bestTeam.getScore(), [x.name for x in n.bestTeam.players]]
 
         #Uncomment the following code if you want the whole shebang, not just the first lineup's score (which tends to be the highest, #TODO: but you haven't tested as of 2/11
         '''
@@ -960,6 +980,12 @@ def doThing(y):
             print [x.name for x in n.bestTeam.players], 'BESTSTATS'
         '''
 
+def getRealScores(day, month, year, players):
+    newplayers = players.getRGdata()
+    for player in newplayers[0].split('\n')[1:]:
+        if player is '' :
+            continue
+
 
 
 
@@ -969,6 +995,18 @@ def __mainRG__(day, month, year, predict = True):
     players=yesterday.getRG(predict)
     players.sort()
     team = doThing(players)
+    print team[0]
+    if predict == True:
+        finalTeam = []
+        newplayers = yesterday.getRG(False)
+        for i in newplayers:
+            for j in team[1]:
+                if i.name == j:
+                    print i.dkpoints
+                    finalTeam.append(i.dkpoints)
+        print sum(finalTeam), "THIS IS FINAL TEAM"
+        return sum(finalTeam)
+    print "THIS IS PERFECT TEAM"
     return team[0]
 
 def __mainDK__():
@@ -996,8 +1034,7 @@ def lineupComparison(day, month, year, today = now):
         print ratios
     return ratios
 
-
-print lineupComparison(8, 2, 2016)
+print lineupComparison(31, 12, 2015)
 
 
 #TODO: 2/11: You adjusted the lineup picks function to points/salary instead of points^3/salary. This is because the lineup picks functions breaks because there are too many options to choose from. It'd be great if it didn't break.
