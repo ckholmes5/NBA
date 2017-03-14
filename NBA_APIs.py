@@ -7,7 +7,7 @@ from lxml import html
 
 
 
-#Change to 2014-15 for other year of data
+#Change season for other years of data
 season = '2015-16'
 months = {'APR' : 4, 'JAN' : 1,'FEB' : 2,'MAR' : 3,'MAY' : 5,'JUN' : 6,'JUL' : 7,'AUG' : 8,'SEP' : 9,'OCT' : 10,'NOV' : 11,'DEC' : 12, '01' : 1, '02' : 2, '03' : 3,'04' : 4, '05' : 5, '06' : 4, '07' : 7, '08' : 8, '09' : 9, '10' : 10, '11' : 11, '12' : 12, '13' : 13, '14' : 14, '15' : 15, '16' : 16, '17' : 17, '18' : 18, '19' : 19, '20' : 20, '21' : 21, '22' : 22, '23' : 23, '24' : 24, '25' : 25, '26' : 26, '27' : 27, '28' : 28, '29' : 29, '30' : 30, '31' : 31}
 
@@ -33,6 +33,7 @@ players = players_response.json()['resultSets'][0]['rowSet']
 
 
 ####### REBOUNDS SETUP #######
+#9-7: Currently dumping into csv files, need to dump into SQL. This is on the rebound level.
 #Change year under 'requests.get', currently set to 2015-2016
 for player in players:
     with open(cs.reboundDir + str(player[0]) + '.json', 'a') as outfile:
@@ -41,7 +42,7 @@ for player in players:
         shots = players_response.json()['resultSets'][0]['rowSet']
         json.dump(shots, outfile)
 
-
+#9-7: All of this can go with SQL. Currently making a new game file and dumping the outcome of every rebound in that game file.
 #Creates rebound files by game by play
 for i in os.listdir(cs.reboundDir):
     if not i.startswith('.'):
@@ -52,10 +53,11 @@ for i in os.listdir(cs.reboundDir):
                     os.makedirs(cs.gameDir + shot[1][15:18])
                 with open(cs.gameDir + shot[1][15:18] + '/' + str(get_date_shots(shot[1][0:12])) + '_rebound.json', 'a') as outfile:
                     json.dump(shot, outfile)
-#End of Rebounds Setup
+
 
 ####### SHOTS SETUP #######
-#HChange year under 'requests.get', currently set to 2015-2016
+#9-7: Currently dumping into csv files, need to dump into SQL. This is on the shot level.
+#Change year under 'requests.get', currently set to 2015-2016
 for player in players:
     with open(cs.shotDir + str(player[0]) + '.json', 'a') as outfile:
         players_response = requests.get('http://stats.nba.com/stats/playerdashptshotlog?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&Period=0&PlayerID=' + str(player[0]) + '&Season=' + season + '&SeasonSegment=&SeasonType=Regular+Season&TeamID=0&VsConference=&VsDivision=')
@@ -64,6 +66,7 @@ for player in players:
         json.dump(players, outfile)
 
 #Creates shot files by game by shot
+#9-7: All of this can go with SQL. Currently making a new game file and dumping the outcome of every shot in that game file.
 for i in os.listdir(cs.shotDir):
     if not i.startswith('.'):
         with open(cs.shotDir + i , 'r') as data_file:
@@ -78,7 +81,7 @@ for i in os.listdir(cs.shotDir):
 
 ####### DEFENSE SETUP #######
 
-
+#9-7: This is making a new defense file for every shot.
 for i in os.listdir(cs.shotDir):
     if not i.startswith('.'):
         with open(cs.shotDir + i , 'r') as data_file:
@@ -87,9 +90,9 @@ for i in os.listdir(cs.shotDir):
                 with open(cs.defenseDir + str(shot[15]) + '.json', 'a') as outfile:
                     json.dump(shot, outfile)
 
-
+#
 #Uncomment this code if you wish to group defense by the team a given player was playing defense against
-                #f shot[1][19] == 'v':
+                #if shot[1][19] == 'v':
                 #    if not os.path.exists(cs.defenseDir + shot[1][23:26]):
                 #        os.makedirs(cs.defenseDir + shot[1][23:26])
                 #elif shot[1][19] == '@':
@@ -97,14 +100,15 @@ for i in os.listdir(cs.shotDir):
                 #        os.makedirs(cs.defenseDir + shot[1][21:24])
 
 
+#9-7: It's unclear if anything above this can still be used. Play by play might have been taken away from stats.nba.com. Everything below should still be good to go.
 
 ####### PLAYER GAMELOG SETUP #######
-
 #Getting gamelog data by player
 games_response = requests.get(gamelog_url)
 games_response.raise_for_status() # raise exception if invalid response
 games = games_response.json()['resultSets'][0]['rowSet']
 
+#9-7: Making a new directory for every player then for every player's game
 #Make files for gamelog by team by player
 for player in games:
     with open(cs.gameDir + player[3] +'/' + player[6] + '_gamelog.json', 'a') as outfile:
@@ -138,7 +142,7 @@ for game in team:
 opponent_response = requests.get(opponent_url)
 opponent_response.raise_for_status() # raise exception if invalid response
 opponent = opponent_response.json()['resultSets'][0]['rowSet']
-
+#9-7: Needs to go to SQL.
 for game in opponent:
     temp = teams[game[1]]
     with open(cs.teamDir + temp + '_opponent.json', 'a') as outfile:
@@ -148,7 +152,7 @@ for game in opponent:
 rosters_response = requests.get(roster_dir)
 rosters_response.raise_for_status()
 rosters = rosters_response.json()['resultSets'][0]['rowSet']
-
+#9-7: Needs to go to SQL
 for player in rosters:
     with open(cs.rosterDir + player[9] + '.json', 'a') as outfile:
         json.dump(player, outfile)
@@ -159,6 +163,7 @@ with open(cs.rosterDir + 'all.json', 'a') as outfile:
 
 
 ####### DK POINTS SETUP #######
+#9-7: Needs to be adjusted to pull data from SQL rather than from
 for i in os.listdir(cs.gamelogDir):
     if not i.startswith('.'):
         with open(cs.gamelogDir + i, 'r') as dataFile:
@@ -235,8 +240,7 @@ for player in playerIDs:
 
 '''
 
-
-#TODO: ENDED HERE ON 1/17 ####### PRICE SCRAPING FROM ROTOGURU ########
+#Price Scraping from RotoWorld
 class playerDayFromRotoWorld:
 
      def __init__(self, statArray):
@@ -321,14 +325,13 @@ class playersPull:
          return self.apiPull.get()
 
 class shotScrape:
-    def __init__(self, days, mons, years, url=None, do_replacement=False):
+    def __init__(self, days, mons, years, url=None):
         self.data=None
         self.days = days
         self.mons = mons
         self.years = years
         if url is None:
             self.url='http://rotoguru1.com/cgi-bin/hyday.pl?mon=${mon}&day=${day}&year=${year}&game=dk&scsv=10'
-        if do_replacement:
             self.url = self.url.replace('${mon}', self.mons)
             self.url = self.url.replace('${day}', self.days)
             self.url = self.url.replace('${year}', self.years)
@@ -367,7 +370,7 @@ class shotScrape:
 
                 newPlayer = [name, player[6],player[12]]
                 print newPlayer
-
+#9-7:
                 with open(cs.priceDir + str(date), 'a') as outfile:
                     json.dump(newPlayer,outfile)
 
@@ -376,8 +379,8 @@ relDays = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16
 relMonths = ['10','11','12','1','2','3','4','5', '6']
 relYears = ['2014','2015','2016']
 
-#2014 = 10/28/14 - 4/15/2015
-#2015 = 10/27/15 - 4/13/2016
+#2014 NBA Regular Season = 10/28/14 - 4/15/2015
+#2015 NBA Regular Season = 10/27/15 - 4/13/2016
 
 def getRotoGuru(day, month, year):
     opponent = shotScrape(day, month, year, None, True).get()
@@ -389,5 +392,4 @@ def getAllDays(days, months, years):
             for day in days:
                 getRotoGuru(day, month, year)
 
-#getAllDays(relDays,relMonths,relYears)
 getAllDays(relDays, relMonths, relYears)

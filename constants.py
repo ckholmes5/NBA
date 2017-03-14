@@ -1,6 +1,6 @@
 #To change the year, change the baseDir and the player_macro
 
-baseDir = '/Users/christianholmes/NBA/players/2015'
+baseDir = '/Users/cholmes/Desktop/Work/NBA/players/2015'
 reboundDir = baseDir + '/Rebounds/'
 shotDir = baseDir + '/Shots/'
 gameDir = baseDir + '/Games/'

@@ -21,7 +21,8 @@ number_dict2 = {'block': 22, 'steal': 21, 'assist': 19, 'turnover': 20, 'rebound
 renameDict = {'kelly_oubre_jr.' : 'kelly_oubre', 'r.j._hunter': 'rj_hunter', 'chris_johnson': 'christapher_johnson', 'raul_neto': 'raulzinho_neto', 'patty_mills': 'patrick_mills', "amar'e_stoudemire": 'amare_stoudemire', 'manu_ginobili': 'emanuel_ginobili','nene_hilario': 'nene', 'danny_green': 'daniel_green','t.j._mcconnell': 'tj_mcconnell', 'c.j._watson': 'cj_watson', 'k.j._mcdaniels': 'kj_mcdaniels', 'c.j._wilcox': 'cj_wilcox', 'd.j._augustin': 'dj_augustin', 'luc_richard_mbah_a_moute': 'luc_mbah_a_moute', 'marcus_thornton': 'marcus_t_thornton','j.j._redick': 'jj_redick', 'j.j._hickson': 'jj_hickson', 'p.j._hairston': 'pj_hairston', 'mo_williams': 'maurice_williams', 't.j._warren': 'tj_warren', 'tristan_thompson': 'tristan_t_thompson', 'p.j._tucker': 'pj_tucker', 'c.j._miles': 'cj_miles', 'j.r._smith': "jr_smith", 'ryan_anderson': 'ryan_j_anderson', 'c.j._mccollum': 'cj_mccollum', 'j.j._barea': 'jose_barea', 'lou_williams': 'louis_williams', "d'angelo_russell": 'dangelo_russell', 'larry_nance_jr.': 'larry_nance', 'o.j._mayo': 'oj_mayo', "kyle_o'quinn": 'kyle_oquinn', "e'twaun_moore" : 'etwaun_moore', 'louis_amundson': 'lou_amundson', "tim_hardaway_jr.": 'timothy_hardaway', "johnny_o'bryant": 'johnny_obryant'}
 teamDick = {'nor': 'NOP', 'pho': 'PHX'}
 
-def expectedBetas(playerID, opposingTeam, new_date = now):
+#9-7: Opens files
+def expectedBetas(playerID, opposingTeam, new_date = now): # Almost certainly deprecated, shooting distance is no longer supported by nba stats
     roster = open(cs.rosterDir + opposingTeam + '.json', )
     roster = json.load(roster)
     with open(cs.shotDir + str(playerID) + '.json') as data_file:
@@ -127,7 +128,7 @@ def expectedShotPercentage(player,team, new_date = now):
 
     return spefTeam
 
-#How many total shots the team he plays for takes on average
+# How many total shots the team he plays for takes on average
 def expectedTeamShots(team, new_date = now):
     totalShots = []
     for i in os.listdir(cs.gameDir + str(team)):
@@ -386,7 +387,7 @@ def expectedTurnovers(player, opponent, new_date = now):
 def expectedRebounds(player, opponent, new_date = now):
     return statChanger(player, opponent, 'rebound', new_date)
 
-
+# Second half of this equation can be reused
 def DKPoints(player, opponent, new_date = now):
     pointStuff = expectedPoints(player, opponent, new_date)
     points = pointStuff[0]
@@ -435,7 +436,7 @@ class ApiPull:
               tmp = tmp.replace('${' + k + '}', v)
         return tmp
 
-#This has been commented out
+
 '''
 class playersPull:
     requests.get('http://stats.nba.com/stats/commonallplayers?IsOnlyCurrentSeason=1&LeagueID=00&Season=${season}',headers={'User-Agent':"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.82 Safari/537.36"})
@@ -600,6 +601,7 @@ class shotScrapeRG:
                 if team in teamDick:
                     team = teamDick[team]
 
+                # This is what needs to change with the current prediction model. That's it?
                 for i in allPlayers:
                     if i[5] == name:
                         id = i[0]
@@ -955,7 +957,7 @@ class SetOfPlayers:
                     team.removeG()
                 team.removeSG()
 
-def doThing(y):
+def doThing(y): # Finds the optimal lineup using the SetOfPlayers class
     ys=[y[x:x+20] for x in range(10)]
     ns=[SetOfPlayers(x) for x in ys]
     for n in ns:
@@ -1038,5 +1040,3 @@ print lineupComparison(31, 12, 2015)
 
 
 #TODO: 2/11: You adjusted the lineup picks function to points/salary instead of points^3/salary. This is because the lineup picks functions breaks because there are too many options to choose from. It'd be great if it didn't break.
-
-

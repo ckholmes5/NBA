@@ -283,7 +283,7 @@ def expectedTurnovers(player, opponent):
 #Option 1
 #1. Do it with the the other method of team allowed vs league allowed
 
-#***REMOVED***?
+#Looks like we should run a test?
 
 #So I'm going to have two different models. I'll use 80% of the data to model and 20% to predict. I'll start by using dates (take data from October to mid-February then predict the rest. There's probably a better way to do it rather than using dates, #TODO: ask sean if he can think of a better way.
 #It would be nice if I could write both algorithms then put the limiting dates in the testing function, rather than hard code the dates into the other function.
